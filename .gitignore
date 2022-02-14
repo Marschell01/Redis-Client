@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+# Build file
+*/build/*
+!*.keep
+
+#Visual Studio Code
+*/.vscode

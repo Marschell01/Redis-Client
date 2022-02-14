@@ -1,5 +1,5 @@
 # uncomment and replace upper case WORDS as necessary
-project('PROJNAME', 'cpp',
+project('redis_client', 'cpp',
         license : ['Boost'],
         version : '0.1',
         # don't change anything of the three following options!
@@ -27,7 +27,7 @@ inc_dir = include_directories('include')
 src = ['src/main.cpp']
 #protobuf: src = ['src/main.cpp', generated]
 
-executable('EXENAME',
+executable('redis',
            sources : src,
            include_directories : inc_dir,
            dependencies : [thread_dep]

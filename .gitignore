@@ -32,7 +32,7 @@
 *.app
 
 # Build file
-*/build/*
+build/*
 !*.keep
 
 #Visual Studio Code

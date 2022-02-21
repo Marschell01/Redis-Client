@@ -1,5 +1,9 @@
 * Changelog
 ** [Unreleased]
+** [0.0.2] - 2022-02-21
+*** Added
+- Add licence for boost
+- Reserach about Redis and RESP3
 ** [0.0.1] - 2022-02-14
 *** Added
 - Create repository and send invitation to prof

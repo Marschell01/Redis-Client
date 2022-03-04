@@ -1,4 +1,3 @@
-option('asio_include_dir', type : 'string', value : '', description : 'the include dir of asio')
-option('cli11_include_dir', type : 'string', value : '', description : 'the dir containing CLI11.hpp')
-option('json_include_dir', type : 'string', value : '', description : 'the include dir of json')
-option('spdlog_include_dir', type : 'string', value : '', description : 'the include dir of spdlog')
+option('cli11_include_dir', type : 'string', value : '/home/marcel/nvs_libs', description : 'the dir containing CLI11.hpp')
+option('spdlog_include_dir', type : 'string', value : '/home/marcel/nvs_libs/spdlog', description : 'the dir containing spdlog.hpp')
+option('asio_include_dir', type : 'string', value : '/home/marcel/nvs_libs/asio', description : 'the dir containing asio.hpp')

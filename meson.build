@@ -19,16 +19,24 @@ add_global_arguments('-I' + get_option('cli11_include_dir'), language : 'cpp')
 # spdlog: https://github.com/gabime/spdlog
 add_global_arguments('-I' + get_option('spdlog_include_dir'), language : 'cpp')
 
-# json: https://github.com/nlohmann/json
-add_global_arguments('-I' + get_option('json_include_dir'), language : 'cpp')
+protoc = find_program('protoc', required : true)
+protobuf_dep = dependency('protobuf', required : true)
+
+gen = generator(protoc, \
+   output    : ['@BASENAME@.pb.cc', '@BASENAME@.pb.h'],
+   arguments : ['--proto_path=@CURRENT_SOURCE_DIR@/src', '--cpp_out=@BUILD_DIR@', '@PLAINNAME@'])
+
+# # change proto file accordingly
+#generated = gen.process('src/dummy.proto')
+# #end protobuf
 
 
 inc_dir = include_directories('include')
 src = ['src/main.cpp']
-#protobuf: src = ['src/main.cpp', generated]
 
-executable('redis',
+
+executable('redis_client',
            sources : src,
            include_directories : inc_dir,
-           dependencies : [thread_dep]
+           dependencies : [thread_dep, protobuf_dep]
           )

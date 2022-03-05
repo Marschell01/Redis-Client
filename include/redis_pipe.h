@@ -7,7 +7,7 @@
 #include <asio.hpp>
 #include <iostream>
 
-namespace RedisClient {
+namespace Redis {
 
     template <typename T>
     class RedisPipe {

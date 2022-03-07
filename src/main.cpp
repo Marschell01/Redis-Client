@@ -26,10 +26,13 @@ int main(int argc, char* argv[]) {
     CLI11_PARSE(app, argc, argv); 
 
     Redis::RedisClient client(ip_address, port);
-    client.set("Name", "MaxMuster");
 
-    std::cout << client.get("Nahme") << "\n";
-
-    std::cout << client.get("Name") << std::endl;
+    std::string input;
+    std::string response;
+    while (true) {
+        std::cout << "Client>> ";
+        std::getline(std::cin, input);
+        client.execute(input);
+    }
     return 0;
 }

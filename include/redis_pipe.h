@@ -44,7 +44,7 @@ namespace Redis {
 
         RedisPipe& operator>>(T& value) {
             if (*stream) {
-                *stream >> value;
+                std::getline(*stream, value);
             }
             return *this;
         }

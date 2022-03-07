@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "redis_pipe.h"
 
 namespace Redis {
@@ -10,8 +12,9 @@ namespace Redis {
     public:
         RedisClient(std::string ip_address, std::string port);
         ~RedisClient();
-        
-        bool set(std::string key, std::string value);
-        std::string get(std::string key);
+
+        size_t get_length(std::string header);
+        std::string create_command(std::string input);
+        void execute(std::string input);
     };
 }

@@ -1,5 +1,11 @@
 * Changelog
 ** [Unreleased]
+** [0.0.3] - 2022-03-07
+*** Added
+- Add fundamental command line interface
+- Add set functionality
+- Add get functionality
+- Create loop for set and get requests in main
 ** [0.0.2] - 2022-02-21
 *** Added
 - Add licence for boost

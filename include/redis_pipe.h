@@ -45,6 +45,9 @@ namespace Redis {
         RedisPipe& operator>>(T& value) {
             if (*stream) {
                 std::getline(*stream, value);
+                if (value.back() == '\r') {
+                    value.pop_back();
+                }
             }
             return *this;
         }

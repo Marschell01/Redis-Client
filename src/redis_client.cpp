@@ -19,7 +19,10 @@ std::string RedisClient::create_command(std::string input) {
 
     size_t pos = 0;
     while ((pos = input.find(space_delimiter)) != std::string::npos) {
-        words.push_back(input.substr(0, pos));
+        std::string found{input.substr(0, pos)};
+        if (!found.empty()) {
+            words.push_back(found);
+        }
         input.erase(0, pos + 1);
     }
 

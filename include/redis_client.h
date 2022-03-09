@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 
 #include "redis_pipe.h"
 
@@ -16,5 +17,7 @@ namespace Redis {
         size_t get_length(std::string header);
         std::string create_command(std::string input);
         void execute(std::string input);
+
+        bool login(std::string user, std::string pwd);
     };
 }

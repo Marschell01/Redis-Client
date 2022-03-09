@@ -77,3 +77,31 @@ void RedisClient::execute(std::string input) {
         break;
     }
 }
+
+bool RedisClient::login(std::string user, std::string pwd) {
+    std::string cmd{"HELLO 3 " + user + " " + pwd + " "};
+    std::string output{""};
+
+    *pipe << create_command(cmd);
+    *pipe >> output;
+    if (output[0] == '-') {
+        return false;
+    }
+
+    size_t out_len = get_length(output);
+    for (size_t i{0}; i < out_len; i++) {
+        *pipe >> output;
+        *pipe >> output;
+
+        std::cout << output << " => ";
+        
+        *pipe >> output;
+        if (output[0] == '$') {
+            *pipe >> output;
+        }
+        std::cout << output << "\n";
+    }
+    std::cout << std::flush;
+
+    return true;
+}

@@ -1,5 +1,10 @@
 * Changelog
 ** [Unreleased]
+** [0.0.4] - 2022-03-14
+*** Added
+- Login functionality
+*** Changed
+- Remove carriage return from stream output
 ** [0.0.3] - 2022-03-07
 *** Added
 - Add fundamental command line interface

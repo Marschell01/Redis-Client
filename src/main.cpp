@@ -4,6 +4,8 @@
 
 #include "redis_client.h"
 #include "CLI11.hpp"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 
 int main(int argc, char* argv[]) {
@@ -28,8 +30,11 @@ int main(int argc, char* argv[]) {
     app.add_flag("-l,--login", with_login, "Use if a username and password should get requested");
 
     CLI11_PARSE(app, argc, argv); 
+    auto console = spdlog::stderr_color_mt("console");
+    console->set_level(spdlog::level::trace);
 
     Redis::RedisClient client(ip_address, port);
+    console->info("Instantiated redis client!");
 
     if (with_login) {
         std::cout << "username: ";
@@ -39,9 +44,11 @@ int main(int argc, char* argv[]) {
     }
     
     if (!client.login(username, password)) {
-        std::cerr << "Error during authentication!" << std::endl;
+        console->error("Error during authentication!");
         return 1;
     }
+
+    console->info("Loggend in successfully!");
 
     
     std::string input;
@@ -50,7 +57,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Client>> ";
         std::getline(std::cin, input);
         if (input == "exit" || input == "EXIT") {
-            std::cout << "Shutdown client..." << std::endl;
+            console->info("Detected exit command!");
+            console->info("Shutdown client!");
             return 0;
         }
         client.execute(input);

@@ -32,7 +32,7 @@ gen = generator(protoc, \
 
 
 inc_dir = include_directories('include')
-src = ['src/main.cpp', 'src/redis_client.cpp']
+src = ['src/main.cpp', 'src/redis_client.cpp', 'src/redis_reply.cpp']
 
 
 executable('redis_client',

@@ -18,11 +18,6 @@ namespace Redis {
 
         RedisPipe(std::string ip_address, std::string port) {
             stream = new asio::ip::tcp::iostream(ip_address, port);
-            if (*stream) { 
-                std::cout << "Stream established!" << std::endl;
-            } else { 
-                std::cout << "No connection!" << std::endl; 
-            } 
         }
 
         ~RedisPipe() {
@@ -33,6 +28,13 @@ namespace Redis {
 
             delete stream;
             stream = nullptr;
+        }
+
+        bool stream_open() {
+            if (*stream) {
+                return true;
+            }
+            return false;
         }
 
         RedisPipe& operator<<(T value) {

@@ -4,9 +4,6 @@
 
 #include "redis_client.h"
 #include "CLI11.hpp"
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
-
 
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
@@ -44,11 +41,8 @@ int main(int argc, char* argv[]) {
     }
     
     if (!client.login(username, password)) {
-        console->error("Error during authentication!");
         return 1;
     }
-
-    console->info("Loggend in successfully!");
 
     
     std::string input;

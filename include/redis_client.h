@@ -4,12 +4,15 @@
 #include <string>
 
 #include "redis_pipe.h"
+#include "redis_reply.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 namespace Redis {
 
     class RedisClient {
     private:
-        RedisPipe<std::string>* pipe; 
+        RedisPipe<std::string>* pipe;
     public:
         RedisClient(std::string ip_address, std::string port);
         ~RedisClient();

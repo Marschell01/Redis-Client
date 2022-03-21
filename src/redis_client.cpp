@@ -3,7 +3,13 @@
 using namespace Redis;
 
 RedisClient::RedisClient(std::string ip_address, std::string port) {
+
+    auto client_logger = spdlog::stderr_color_mt("client");
     pipe = new RedisPipe<std::string>(ip_address, port);
+    if (!pipe->stream_open()) {
+        client_logger->error("No connection to {0}, using port {1}, could be established!", ip_address, port);
+    }
+    client_logger->info("Connection to {0}, using port {1}, established!", ip_address, port);
 }
 
 RedisClient::~RedisClient() {
@@ -55,38 +61,28 @@ void RedisClient::execute(std::string input) {
     *pipe << create_command(input + ' ');
     std::string output;
     *pipe >> output;
-    std::string result{""};
-
-    switch (output[0])
-    {
-    case '$':
-        if (output == "$-1") {
-            std::cout << "Not existent" << std::endl;
-            break;
-        }
-        *pipe >> output;
-        std::cout << output << std::endl;
-        break;
-    case '+':
-        std::cout << output << std::endl;
-        break;
-    case '-':
-        std::cout << output << std::endl;
-        break;
-    default:
-        break;
-    }
+    ReplyType replyType{Reply::determine_type(output)};
+    if (!(replyType == ReplyType::array)) {
+    } 
+    std::cout << output << std::endl;
 }
 
+
 bool RedisClient::login(std::string user, std::string pwd) {
+    auto login_logger = spdlog::stdout_color_mt("login");
+    if (user == "") {
+        login_logger->info("Logging in using default user!");
+    }
     std::string cmd{"HELLO 3 " + user + " " + pwd + " "};
     std::string output{""};
 
     *pipe << create_command(cmd);
     *pipe >> output;
     if (output[0] == '-') {
+        login_logger->error("Logging failed!");
         return false;
     }
+    login_logger->info("Logging successfull!");
 
     size_t out_len = get_length(output);
     for (size_t i{0}; i < out_len; i++) {

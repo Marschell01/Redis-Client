@@ -1,5 +1,10 @@
 * Changelog
 ** [Unreleased]
+** [0.0.5] - 2022-03-21
+*** Added
+- Logging
+- Custom exception class
+- Reply class to determin the type of a reply
 ** [0.0.4] - 2022-03-14
 *** Added
 - Login functionality

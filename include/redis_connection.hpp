@@ -48,6 +48,9 @@ namespace Redis {
                 LOG_DEBUG("Created stream!");
                 LOG_DEBUG("Processing received message!");
                 while (std::getline(is, temp)) {
+                    if (temp.back() == '\r') {
+                        temp.pop_back();
+                    }
                     reply.push_back(temp);
                 }
 

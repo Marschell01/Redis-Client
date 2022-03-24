@@ -26,36 +26,46 @@ int main(int argc, char* argv[]) {
     app.add_option("-p,--port", port, "port to connect to");
     app.add_flag("-l,--login", with_login, "Use if a username and password should get requested");
 
+    LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
+
     CLI11_PARSE(app, argc, argv); 
-    auto console = spdlog::stderr_color_mt("console");
-    console->set_level(spdlog::level::trace);
 
-    Redis::RedisClient client(ip_address, port);
-    console->info("Instantiated redis client!");
+    LOG_INFO("Starting redis client");
+    try {
+        Redis::RedisClient client{"localhost", "6379"};
+        LOG_INFO("Started redis client");
 
-    if (with_login) {
-        std::cout << "username: ";
-        std::getline(std::cin, username);
-        std::cout << "password: ";
-        std::getline(std::cin, password);
-    }
-    
-    if (!client.login(username, password)) {
-        return 1;
-    }
-
-    
-    std::string input;
-    std::string response;
-    while (true) {
-        std::cout << "Client>> ";
-        std::getline(std::cin, input);
-        if (input == "exit" || input == "EXIT") {
-            console->info("Detected exit command!");
-            console->info("Shutdown client!");
-            return 0;
+        LOG_INFO("Starting login procedure");
+        if (with_login) {
+            std::cout << "username: ";
+            std::getline(std::cin, username);
+            std::cout << "password: ";
+            std::getline(std::cin, password);
         }
-        client.execute(input);
+        
+        if (!client.login(username, password)) {
+            LOG_ERROR("Invalid credentials for login");
+            return 1;
+        }
+
+        LOG_INFO("Finished login procedure");
+
+        
+        std::string input{};
+        while (true) {
+            std::cout << "Client>> ";
+            std::getline(std::cin, input);
+            if (input == "exit" || input == "EXIT") {
+                LOG_INFO("Detected exit command!");
+                LOG_INFO("Shutdown client!");
+                return 0;
+            }
+            client.execute(input);
+        }
+        
+    } catch (asio::system_error& e) {
+        LOG_ERROR(e.what());
+        return 1;
     }
     return 0;
 }

@@ -3,16 +3,15 @@
 #include <map>
 #include <string>
 
-#include "redis_pipe.h"
+#include "redis_connection.hpp"
 #include "redis_reply.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include "logger.h"
 
 namespace Redis {
 
     class RedisClient {
     private:
-        RedisPipe<std::string>* pipe;
+        RedisConnection* con{nullptr};
     public:
         RedisClient(std::string ip_address, std::string port);
         ~RedisClient();

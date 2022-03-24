@@ -3,21 +3,17 @@
 using namespace Redis;
 
 RedisClient::RedisClient(std::string ip_address, std::string port) {
-
-    auto client_logger = spdlog::stderr_color_mt("client");
-    pipe = new RedisPipe<std::string>(ip_address, port);
-    if (!pipe->stream_open()) {
-        client_logger->error("No connection to {0}, using port {1}, could be established!", ip_address, port);
-    }
-    client_logger->info("Connection to {0}, using port {1}, established!", ip_address, port);
+    
+    con = new RedisConnection(ip_address, port);
 }
 
 RedisClient::~RedisClient() {
-    delete pipe;
-    pipe = nullptr;
+    delete con;
+    con = nullptr;
+    
 }
 
-std::string RedisClient::create_command(std::string input) {
+std::string RedisClient::create_command(std::string input) {    
     std::string output{"*"};
 
     char space_delimiter = ' ';
@@ -32,9 +28,7 @@ std::string RedisClient::create_command(std::string input) {
         input.erase(0, pos + 1);
     }
 
-    //header
     output += std::to_string(words.size()) + "\r\n";
-    //content
     for (const auto &str : words) {
         output += "$" + std::to_string(str.length()) + "\r\n";
         output += str + "\r\n";
@@ -58,46 +52,63 @@ size_t RedisClient::get_length(std::string header) {
 }
 
 void RedisClient::execute(std::string input) {
-    *pipe << create_command(input + ' ');
-    std::string output;
-    *pipe >> output;
-    ReplyType replyType{Reply::determine_type(output)};
-    if (!(replyType == ReplyType::array)) {
-    } 
-    std::cout << output << std::endl;
+    
+    std::string cmd{create_command(input + ' ')};
+    con->sendData(cmd);
+    std::vector<std::string> resp{con->getData()};
+
+    switch (BaseReply::determin_type(resp.at(0)))
+    {
+    case ReplyType::bulk_string:
+        LOG_INFO(resp.at(1));
+        break;
+    case ReplyType::integer:
+        LOG_INFO(resp.at(0));
+        break;
+    case ReplyType::simple_string:
+        LOG_INFO(resp.at(0));
+        break;
+    case ReplyType::error:
+        LOG_ERROR(resp.at(0));
+        break;
+    case ReplyType::null:
+        LOG_ERROR("No entry found!");
+        break;
+    case ReplyType::map:
+        {
+            std::unique_ptr<MapReply> map = ReplyParser<MapReply>::parse(resp);
+            map.get()->print_content();
+            
+            break;
+        }
+    case ReplyType::array:
+        {
+            std::unique_ptr<ArrayReply> array = ReplyParser<ArrayReply>::parse(resp);
+            array.get()->print_content();
+            
+            break;
+        }
+    default:
+        break;
+    }
 }
 
 
 bool RedisClient::login(std::string user, std::string pwd) {
-    auto login_logger = spdlog::stdout_color_mt("login");
+
     if (user == "") {
-        login_logger->info("Logging in using default user!");
+        LOG_INFO("Logging in using default user!");
     }
-    std::string cmd{"HELLO 3 " + user + " " + pwd + " "};
-    std::string output{""};
+    std::string cmd{create_command("HELLO 3 " + user + " " + pwd + " ")};
 
-    *pipe << create_command(cmd);
-    *pipe >> output;
-    if (output[0] == '-') {
-        login_logger->error("Logging failed!");
-        return false;
-    }
-    login_logger->info("Logging successfull!");
+    con->sendData(cmd);
+    std::vector<std::string> resp = con->getData();
+    LOG_DEBUG("Recieved vector size: {0}", resp.size());
 
-    size_t out_len = get_length(output);
-    for (size_t i{0}; i < out_len; i++) {
-        *pipe >> output;
-        *pipe >> output;
-
-        std::cout << output << " => ";
-        
-        *pipe >> output;
-        if (output[0] == '$') {
-            *pipe >> output;
-        }
-        std::cout << output << "\n";
-    }
-    std::cout << std::flush;
-
+    std::unique_ptr<MapReply> head_info = ReplyParser<MapReply>::parse(resp);
+    head_info.get()->print_content();
+    
+    LOG_INFO("Logging successfull!");
+    
     return true;
 }

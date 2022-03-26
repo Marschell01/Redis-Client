@@ -1,24 +1,36 @@
 #pragma once
 
 #include <string>
-#include "redis_exceptions.h"
-#include "logger.h"
 #include <deque>
 #include <variant>
+#include <map>
+#include <string>
+
+#include "redis_exceptions.h"
+#include "logger.h"
 
 namespace Redis {
 
     enum ReplyType {
-        error,
-        bulk_string,
         simple_string,
-        null,
+        bulk_string,
         integer,
+        error,
+        null,
         array,
         map,
         no_type
     };
-    
+
+
+    class SimpleString;
+    class BulkString;
+    class Integer;
+    class Array;
+    class Map;
+
+    typedef std::variant<SimpleString, BulkString, Integer, Array, Map> redis_types;
+
 
     ReplyType determin_type(std::string header) {
         if (header == "_") {
@@ -43,18 +55,18 @@ namespace Redis {
         }
     }
 
-
-    class SimpleString  {
+    class SimpleString {
     private:
         std::string content{};
 
     public:
         SimpleString(std::deque<std::string>& msg) {
+            LOG_DEBUG(msg.at(0));
             content = msg.at(0);
             msg.pop_front();
         }
 
-        const std::string& get() {
+        std::string& get() {
             return content;
         }
     };
@@ -66,11 +78,12 @@ namespace Redis {
     public:
         BulkString(std::deque<std::string>& msg) {
             msg.pop_front();
+            LOG_DEBUG(msg.at(0));
             content = msg.at(0);
             msg.pop_front();
         }
 
-        const std::string& get() {
+        std::string& get() {
             return content;
         }
     };
@@ -81,46 +94,105 @@ namespace Redis {
 
     public:
         Integer(std::deque<std::string>& msg) {
-            content = std::stoi(msg.at(0));
+            LOG_DEBUG(msg.at(0));
+            msg.at(0).erase(0, 1);
+            content = std::stol(msg.at(0));
             msg.pop_front();
         }
 
-        const int& get() {
+        int& get() {
+            return content;
+        }
+    };
+
+
+    class Array final {
+    private:
+        std::deque<std::shared_ptr<redis_types>> content{};
+
+    public:
+        Array(std::deque<std::string>& msg) {
+            LOG_DEBUG(msg.at(0));
+            std::string header{msg.at(0)};
+            header.erase(0, 1);
+            LOG_DEBUG(header);
+            int array_len{std::stoi(header)};
+
+            if (array_len == 0) {
+                return;
+            }
+
+            msg.pop_front();
+            
+            while (array_len > 0) {
+                switch (determin_type(msg.at(0)))
+                {
+                case ReplyType::simple_string:
+                    content.push_front(std::make_shared<redis_types>(SimpleString(msg)));
+                    break;
+                case ReplyType::bulk_string:
+                    content.push_front(std::make_shared<redis_types>(BulkString(msg)));
+                    break;
+                case ReplyType::integer:
+                    content.push_front(std::make_shared<redis_types>(Integer(msg)));
+                    break;  
+                case ReplyType::array:
+                    content.push_front(std::make_shared<redis_types>(Array(msg)));
+                    break;             
+                default:
+                    break;
+                }
+
+                array_len--;
+            }
+        }
+
+        std::deque<std::shared_ptr<redis_types>>& get() {
             return content;
         }
     };
 
     class Map  {
     private:
-        std::deque<std::variant<SimpleString, BulkString, Integer>> content{};
+        std::map<std::string, std::shared_ptr<redis_types>> content{};
 
     public:
         Map(std::deque<std::string>& msg) {
-            int map_len{std::stoi(msg.at(0))};
+            LOG_DEBUG(msg.at(0));
+            std::string header{msg.at(0)};
+            header.erase(0, 1);
+            LOG_DEBUG(header);
+            int map_len{std::stoi(header)};
             msg.pop_front();
             
+            std::string key{};
             while (map_len > 0) {
-                switch (determin_type(msg.at(0)))
-                {
+                key = (BulkString(msg)).get();
+
+                switch (determin_type(msg.at(0))) {
                 case ReplyType::simple_string:
-                    content.push_front(SimpleString(msg));
+                    content.insert(std::make_pair(key, std::make_shared<redis_types>(SimpleString(msg))));
                     break;
                 case ReplyType::bulk_string:
-                    content.push_front(BulkString(msg));
+                    content.insert(std::make_pair(key, std::make_shared<redis_types>(BulkString(msg))));
                     break;
                 case ReplyType::integer:
-                    content.push_front(Integer(msg));
+                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Integer(msg))));
                     break;
-                
+                case ReplyType::array:
+                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Array(msg))));
+                    break;
+                case ReplyType::map:
+                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Map(msg))));
+                    break;
                 default:
                     break;
                 }
-
                 map_len--;
             }
         }
 
-        const std::deque<std::variant<SimpleString, BulkString, Integer>>& get() {
+        std::map<std::string, std::shared_ptr<redis_types>>& get() {
             return content;
         }
     };

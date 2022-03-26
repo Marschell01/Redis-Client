@@ -2,7 +2,8 @@
 #include <thread>
 #include <vector>
 
-#include "redis_client.h"
+#include "redis_execute.hpp"
+#include "redis_types.h"
 #include "CLI11.hpp"
 
 int main(int argc, char* argv[]) {
@@ -11,6 +12,8 @@ int main(int argc, char* argv[]) {
     std::string username{""};
     std::string password{""};
     bool with_login{false};
+
+    std::deque<std::string> output{};
     
     CLI::App app("A simple redis client");
     app.add_option("--ip", ip_address, "ip address to connect to")->check(
@@ -30,42 +33,32 @@ int main(int argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv); 
 
-    LOG_INFO("Starting redis client");
-    try {
-        Redis::RedisClient client{"localhost", "6379"};
-        LOG_INFO("Started redis client");
+    Redis::RedisConnection* con{new Redis::RedisConnection(ip_address, port)};
 
-        LOG_INFO("Starting login procedure");
-        if (with_login) {
-            std::cout << "username: ";
-            std::getline(std::cin, username);
-            std::cout << "password: ";
-            std::getline(std::cin, password);
-        }
-        
-        if (!client.login(username, password)) {
-            LOG_ERROR("Invalid credentials for login");
-            return 1;
-        }
+    //START - Pipeline test
+    Redis::execute_no_flush(*con, "PING");
+    Redis::execute_no_flush(*con, "PING");
+    Redis::execute_no_flush(*con, "PING");
 
-        LOG_INFO("Finished login procedure");
+    output = Redis::flush_pending(*con);
 
-        
-        std::string input{};
-        while (true) {
-            std::cout << "Client>> ";
-            std::getline(std::cin, input);
-            if (input == "exit" || input == "EXIT") {
-                LOG_INFO("Detected exit command!");
-                LOG_INFO("Shutdown client!");
-                return 0;
-            }
-            client.execute(input);
-        }
-        
-    } catch (asio::system_error& e) {
-        LOG_ERROR(e.what());
-        return 1;
+
+    for (int i{0}; i < 3; i++) {
+        Redis::SimpleString str{std::ref(output)};
+        LOG_INFO("Output: {0}", str.get());
+        LOG_DEBUG("Queue length: {0}", output.size());
     }
+    //END - Pipeline test
+ 
+    //START - Default test
+    output = Redis::execute(*con, "SET", "name", "Max Mustermann");
+    LOG_INFO(Redis::SimpleString(output).get());
+    output = Redis::execute(*con, "GET", "name");
+    LOG_INFO(Redis::BulkString(output).get());
+    //END - Default test
+
+    delete con;
+    con = nullptr;
+
     return 0;
 }

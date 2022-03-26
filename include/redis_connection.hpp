@@ -3,7 +3,7 @@
 #include <asio.hpp>
 #include <iostream>
 #include <string>
-#include <vector>
+#include <deque>
 #include "logger.h"
 
 namespace Redis {
@@ -13,6 +13,7 @@ namespace Redis {
         asio::io_context ctx;
         asio::ip::tcp::resolver resolver{ctx};
         asio::ip::tcp::socket socket{ctx}; 
+        std::string buffered_data{""};
 
     public:
         RedisConnection(std::string ip_address, std::string port) {
@@ -29,8 +30,8 @@ namespace Redis {
             LOG_INFO("Connection closed");
         }
 
-        std::vector<std::string> getData() {
-            std::vector<std::string> reply{};
+        std::deque<std::string> getData() {
+            std::deque<std::string> reply{};
             std::string temp{};
 
             if (socket.is_open()) {
@@ -60,12 +61,17 @@ namespace Redis {
             LOG_ERROR("Can not get data, socket is closed!");
             return reply;
         }
+
+        void bufferData(const std::string& data) {
+            buffered_data.append(data);
+        }
                     
 
-        void sendData(const std::string& message) {
+        void sendData() {
             if (socket.is_open()) {
                 LOG_DEBUG("Before write!");
-                asio::write(socket, asio::buffer(message, message.size()));
+                asio::write(socket, asio::buffer(buffered_data, buffered_data.size()));
+                buffered_data.clear();
                 LOG_DEBUG("After write!");
                 LOG_INFO("Sent message!");
                 return;

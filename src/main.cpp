@@ -4,6 +4,8 @@
 #include "redis_types.h"
 #include "CLI11.hpp"
 
+#include <chrono>
+
 void print_map(Redis::Map& map);
 void print_array(Redis::Array& array);
 
@@ -49,6 +51,8 @@ void print_array(Redis::Array& array) {
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
     std::string port{"6379"};
+    std::string subscribe_to{""};
+    std::string publish_to{""};
     std::string username{""};
     std::string password{""};
     bool with_login{false};
@@ -68,19 +72,20 @@ int main(int argc, char* argv[]) {
     );
     app.add_option("-p,--port", port, "port to connect to");
     app.add_flag("-l,--login", with_login, "Use if a username and password should get requested");
+    app.add_option("--subscriber", subscribe_to, "Specify element for subscription");
+    app.add_option("--publisher", publish_to, "Specify element to publish to");
 
     LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
 
     CLI11_PARSE(app, argc, argv); 
 
-    Redis::RedisConnection* con{new Redis::RedisConnection(ip_address, port)};
-
+    /*
     //START - Pipeline test
-    Redis::execute_no_flush(*con, "PING");
-    Redis::execute_no_flush(*con, "PING");
-    Redis::execute_no_flush(*con, "PING");
+    Redis::execute_no_flush(con, "PING");
+    Redis::execute_no_flush(con, "PING");
+    Redis::execute_no_flush(con, "PING");
 
-    output = Redis::flush_pending(*con);
+    output = Redis::flush_pending(con);
 
 
     for (int i{0}; i < 3; i++) {
@@ -91,21 +96,55 @@ int main(int argc, char* argv[]) {
     //END - Pipeline test
  
     //START - Default test
-    output = Redis::execute(*con, "SET", "name", "Max Mustermann");
+    output = Redis::execute(con, "SET", "name", "Max Mustermann");
     LOG_INFO(Redis::SimpleString(output).get());
-    output = Redis::execute(*con, "GET", "name");
+    output = Redis::execute(con, "GET", "name");
     LOG_INFO(Redis::BulkString(output).get());
 
 
-    output = Redis::execute(*con, "HELLO", "3");
+    output = Redis::execute(con, "HELLO", "3");
     Redis::Map map{output};
 
     print_map(map);
     
     //END - Default test
+    */
 
-    delete con;
-    con = nullptr;
+    //START - Pub/Sub test
+
+    Redis::RedisConnection con{ip_address, port};
+    if (subscribe_to != "") {
+        Redis::execute(con, "subscribe", subscribe_to);
+        while (true) {
+            LOG_INFO("Subscriber waiting for data");
+            std::deque<std::string> out{con.getData()};
+            LOG_INFO("Subscriber got data");
+            std::string header{out.at(0)};
+            switch (Redis::determin_type(header)) {
+            case Redis::ReplyType::array: {
+                Redis::Array arr{out};
+                print_array(arr);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+    if (publish_to != "") {
+        std::string input{};
+        while (true) {
+            std::cout << "Element: ";
+            std::getline(std::cin, input);
+            output = Redis::execute(con, "publish", publish_to, input);
+            LOG_INFO(Redis::SimpleString(output).get());
+        }
+    }
+
+
+
+    //END - Pub/Sub test
+
 
     return 0;
 }

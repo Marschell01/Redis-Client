@@ -1,5 +1,13 @@
 * Changelog
 ** [Unreleased]
+** [0.0.6] - 2022-03-28
+*** Added
+- Example for Subscribe
+- Example for Publish
+- Pipelining
+*** Changed
+- Reply classes
+- Execution of redis commands
 ** [0.0.5] - 2022-03-21
 *** Added
 - Logging

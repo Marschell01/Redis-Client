@@ -3,6 +3,7 @@
 #include "redis_execute.hpp"
 #include "redis_types.h"
 #include "CLI11.hpp"
+#include "redis_lock.hpp"
 
 #include <chrono>
 
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]) {
     app.add_option("--subscriber", subscribe_to, "Specify element for subscription");
     app.add_option("--publisher", publish_to, "Specify element to publish to");
 
-    LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
+    //LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
 
     CLI11_PARSE(app, argc, argv); 
 
@@ -110,6 +111,7 @@ int main(int argc, char* argv[]) {
     //END - Default test
     */
 
+   /*
     //START - Pub/Sub test
 
     Redis::RedisConnection con{ip_address, port};
@@ -140,11 +142,17 @@ int main(int argc, char* argv[]) {
             LOG_INFO(Redis::SimpleString(output).get());
         }
     }
-
-
-
     //END - Pub/Sub test
+    */
 
+
+   Redis::RedisConnection con{ip_address, port};
+   Redis::RedisLock lck{con, "lck_list"};
+   lck.lock();
+
+   std::this_thread::sleep_for(std::chrono::milliseconds{10000});
+
+   lck.unlock();
 
     return 0;
 }

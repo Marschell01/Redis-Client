@@ -7,48 +7,6 @@
 
 #include <chrono>
 
-void print_map(Redis::Map& map);
-void print_array(Redis::Array& array);
-
-void print_helper(const std::string& key, Redis::redis_types* val) {
-    if(val->index() == 0) { //SimpleString
-        Redis::SimpleString value = std::get<Redis::SimpleString>(*val);
-        LOG_INFO("{0} => {1}", key, value.get());
-    }
-    if(val->index() == 1) { //BulkString
-        Redis::BulkString value = std::get<Redis::BulkString>(*val);
-        LOG_INFO("{0} => {1}", key, value.get());
-    }
-    if(val->index() == 2) { //Integer
-        Redis::Integer value = std::get<Redis::Integer>(*val);
-        LOG_INFO("{0} => {1}", key, value.get());
-    }
-    if(val->index() == 3) { //Integer
-        Redis::Array value = std::get<Redis::Array>(*val);
-        LOG_INFO("{0} => *", key);
-        print_array(value);
-    }
-    if(val->index() == 4) { //Integer
-        Redis::Map value = std::get<Redis::Map>(*val);
-        LOG_INFO("{0} => %", key);
-        print_map(value);
-    }
-}
-
-void print_map(Redis::Map& map) {
-    for (auto& [key, val] : map.get()) {
-        print_helper(key, val.get());
-    }
-}
-
-void print_array(Redis::Array& array) {
-    int idx_counter{0};
-    for (auto& elem : array.get()) {
-        print_helper(std::to_string(idx_counter), elem.get());
-        idx_counter++;
-    }
-}
-
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
     std::string port{"6379"};
@@ -57,8 +15,6 @@ int main(int argc, char* argv[]) {
     std::string username{""};
     std::string password{""};
     bool with_login{false};
-
-    std::deque<std::string> output{};
     
     CLI::App app("A simple redis client");
     app.add_option("--ip", ip_address, "ip address to connect to")->check(
@@ -82,31 +38,32 @@ int main(int argc, char* argv[]) {
 
     /*
     //START - Pipeline test
-    Redis::execute_no_flush(con, "PING");
-    Redis::execute_no_flush(con, "PING");
-    Redis::execute_no_flush(con, "PING");
+    Redis::RedisConnection con{ip_address, port};
 
-    output = Redis::flush_pending(con);
+    Redis::execute_no_flush(con, "PING");
+    LOG_INFO("Sent PING");
+    Redis::execute_no_flush(con, "PING");
+    LOG_INFO("Sent PING");
+    Redis::execute_no_flush(con, "PING");
+    LOG_INFO("Sent PING");
+
+    Redis::RedisResponse resp{Redis::flush_pending(con)};
 
 
     for (int i{0}; i < 3; i++) {
-        Redis::SimpleString str{std::ref(output)};
-        LOG_INFO("Output: {0}", str.get());
-        LOG_DEBUG("Queue length: {0}", output.size());
+        LOG_INFO("Output: {0}", resp.parse<std::string>());
     }
     //END - Pipeline test
  
     //START - Default test
-    output = Redis::execute(con, "SET", "name", "Max Mustermann");
-    LOG_INFO(Redis::SimpleString(output).get());
-    output = Redis::execute(con, "GET", "name");
-    LOG_INFO(Redis::BulkString(output).get());
+    resp = Redis::execute(con, "SET", "name", "Max Mustermann");
+    LOG_INFO(resp.parse<std::string>());
+    resp = Redis::execute(con, "GET", "name");
+    LOG_INFO(resp.parse<std::string>());
 
 
-    output = Redis::execute(con, "HELLO", "3");
-    Redis::Map map{output};
-
-    print_map(map);
+    resp = Redis::execute(con, "HELLO", "3");
+    LOG_INFO(resp.parse<std::string>());
     
     //END - Default test
     */
@@ -119,18 +76,9 @@ int main(int argc, char* argv[]) {
         Redis::execute(con, "subscribe", subscribe_to);
         while (true) {
             LOG_INFO("Subscriber waiting for data");
-            std::deque<std::string> out{con.getData()};
+            Redis::RedisResponse resp{con.getData()};
             LOG_INFO("Subscriber got data");
-            std::string header{out.at(0)};
-            switch (Redis::determin_type(header)) {
-            case Redis::ReplyType::array: {
-                Redis::Array arr{out};
-                print_array(arr);
-                break;
-            }
-            default:
-                break;
-            }
+            LOG_INFO(resp.parse<std::string>());
         }
     }
     if (publish_to != "") {
@@ -138,21 +86,33 @@ int main(int argc, char* argv[]) {
         while (true) {
             std::cout << "Element: ";
             std::getline(std::cin, input);
-            output = Redis::execute(con, "publish", publish_to, input);
-            LOG_INFO(Redis::SimpleString(output).get());
+            Redis::RedisResponse resp{Redis::execute(con, "publish", publish_to, input)};
+            LOG_INFO(resp.parse<std::string>());
         }
     }
     //END - Pub/Sub test
     */
+    
+    /*
+    Redis::RedisConnection con{ip_address, port};
+    Redis::RedisLock lck{con, "lck_list"};
 
+    lck.lock();
+    
+    std::string hello_output{Redis::execute(con, "hello", "3").parse<std::string>()};
+    LOG_INFO(hello_output); 
+    std::this_thread::sleep_for(std::chrono::milliseconds{2000});
 
-   Redis::RedisConnection con{ip_address, port};
-   Redis::RedisLock lck{con, "lck_list"};
-   lck.lock();
+    std::string set_output{Redis::execute(con, "set", "name", "hallowelt").parse<std::string>()};
+    LOG_INFO(set_output);
+    std::this_thread::sleep_for(std::chrono::milliseconds{2000});   
 
-   std::this_thread::sleep_for(std::chrono::milliseconds{10000});
+    std::string get_output{Redis::execute(con, "get", "name").parse<std::string>()};
+    LOG_INFO(get_output);
+    std::this_thread::sleep_for(std::chrono::milliseconds{2000});   
 
-   lck.unlock();
-
+    lck.unlock();
+    */
+    
     return 0;
 }

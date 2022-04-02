@@ -39,35 +39,35 @@ namespace Redis {
 
         void lock() {
             LOG_INFO("RedisLock::lock:: Try lock on resource: {0}", resource);
-            std::deque<std::string> output{execute(con, "SET", resource, rand_key, "NX", "PX", "30000")};
+            RedisResponse output{execute(con, "SET", resource, rand_key, "NX", "PX", "30000")};
             while (true) {
-                SimpleString str{output};
-                if (str.get() == "$-1") {
+                if (output.get_type() == ReplyType::null) {
                     std::this_thread::sleep_for(std::chrono::milliseconds{1000});
-                    output = execute(con, "SET", resource, rand_key, "NX");
+                    output = execute(con, "SET", resource, rand_key, "NX", "PX", "30000");
                 } else {
                     break;
                 }
             }
-            LOG_INFO("RedisLock::lock:: Set lock on resource: {0} with unique key: {1}", resource, rand_key);
+            LOG_INFO("RedisLock::lock:: Set lock on resource: {0}", resource);
+            LOG_DEBUG("RedisLock::lock:: Key: {0}", rand_key)
         }
 
         void unlock() {
-            std::deque<std::string> output{execute(con, "GET", resource)};
-            LOG_INFO("RedisLock::unlock:: Try to unlock resource: {0} with unique key: {1}", resource, rand_key);
+            RedisResponse output{execute(con, "GET", resource)};
+            LOG_INFO("RedisLock::unlock:: Try to unlock resource: {0}", resource);
+            LOG_DEBUG("RedisLock::lock:: Key: {0}", rand_key)
 
-            switch (Redis::determin_type(output.at(0))) {
-            case Redis::ReplyType::bulk_string: {
-                Redis::BulkString str{output};
-                if (str.get() == rand_key) {
+            switch (output.get_type()) {
+            case Redis::ReplyType::error: {
+                break;
+            }
+            default:
+                if (output.parse<std::string>() == rand_key) {
                     execute(con, "DEL", resource);
                     LOG_INFO("RedisLock::unlock:: Released lock");
                 } else {
                     LOG_ERROR("RedisLock::unlock:: Lock was not created by this instance");
                 }
-                break;
-            }
-            default:
                 break;
             }
         }

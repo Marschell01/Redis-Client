@@ -33,7 +33,7 @@ namespace Redis {
 
 
     ReplyType determin_type(std::string header) {
-        if (header == "_") {
+        if (header == "$-1") {
             return ReplyType::null;
         }
         switch (header[0]) {

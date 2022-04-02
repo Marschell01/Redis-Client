@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "redis_connection.hpp"
+#include "redis_response.hpp"
 
 namespace Redis {
 
@@ -33,10 +34,10 @@ namespace Redis {
     }
 
     template<typename ...T>
-    auto execute(RedisConnection& con, std::string operation, T && ... args) {
+    RedisResponse execute(RedisConnection& con, std::string operation, T && ... args) {
         execute_no_flush(con, operation, args...);
 
         con.sendData();
-        return con.getData();
+        return RedisResponse{con.getData()};
     }
 }

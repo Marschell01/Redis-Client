@@ -73,7 +73,7 @@ namespace Redis {
                 asio::write(socket, asio::buffer(buffered_data, buffered_data.size()));
                 buffered_data.clear();
                 LOG_DEBUG("After write!");
-                LOG_INFO("Sent message!");
+                LOG_DEBUG("Sent message!");
                 return;
             }
             LOG_ERROR("Can not sent data, socket is closed!");

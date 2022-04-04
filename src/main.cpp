@@ -4,6 +4,7 @@
 #include "redis_types.h"
 #include "CLI11.hpp"
 #include "redis_lock.hpp"
+#include "redis_transaction.hpp"
 
 #include <chrono>
 
@@ -113,6 +114,29 @@ int main(int argc, char* argv[]) {
 
     lck.unlock();
     */
+
+    Redis::RedisConnection con{ip_address, port};
+    Redis::RedisTransaction transaction{con};
+    std::string set_input{};
+    std::string get_output{};
+
+    set_input = Redis::execute(con, "set", "name", "Erster Name").parse<std::string>();
+    LOG_INFO(set_input);
+    
+    transaction.begin_transaction();
+
+    set_input = Redis::execute(con, "set", "name", "Zweiter Name").parse<std::string>();
+    LOG_INFO(set_input);
+
+    get_output = Redis::execute(con, "get", "name").parse<std::string>();
+    LOG_INFO(get_output);
+
+    transaction.end_transaction();
+
+    //transaction.discard_transaction();
+
+    get_output = Redis::execute(con, "get", "name").parse<std::string>();
+    LOG_INFO(get_output);
     
     return 0;
 }

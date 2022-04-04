@@ -1,6 +1,6 @@
 #pragma once
 
-#include "redis_types.h"
+#include "redis_types.hpp"
 #include <exception>
 
 

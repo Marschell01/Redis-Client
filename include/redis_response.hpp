@@ -43,12 +43,16 @@ namespace Redis {
             Redis::Integer value = std::get<Redis::Integer>(*val);
             out += key + " => " + std::to_string(value.get()) + "\n";
         }
-        if(val->index() == 3) { //Array
+        if(val->index() == 4) { //Integer
+            Redis::Error value = std::get<Redis::Error>(*val);
+            out += key + " => " + value.get() + "\n";
+        }
+        if(val->index() == 4) { //Array
             Redis::Array value = std::get<Redis::Array>(*val);
             out += key + " => *\n";
             array_to_string(value, out);
         }
-        if(val->index() == 4) { //Map
+        if(val->index() == 6) { //Map
             Redis::Map value = std::get<Redis::Map>(*val);
             out += key + " => %\n";
             map_to_string(value, out);
@@ -86,6 +90,10 @@ namespace Redis {
                 return std::to_string(Integer{values}.get());
             }
 
+            case ReplyType::error: {
+                return Error{values}.get();
+            }
+
             case ReplyType::array: {
                 std::string output{""};
                 array_to_string(Redis::Array{values}, output);
@@ -97,7 +105,7 @@ namespace Redis {
                 map_to_string(Redis::Map{values}, output);
                 return output;
             }
-        
+
             default: {
                 throw std::invalid_argument("Value can not be converted into an string!");
             }
@@ -109,6 +117,9 @@ namespace Redis {
     int RedisResponse::parse<int>() {
         if (type == ReplyType::integer) {
             return Integer{values}.get();
+        }
+        if (type == ReplyType::error) {
+            return -1;
         }
             
         throw std::invalid_argument("Value can not be converted into an integer!");

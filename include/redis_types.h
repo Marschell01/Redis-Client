@@ -6,7 +6,6 @@
 #include <map>
 #include <string>
 
-#include "redis_exceptions.h"
 #include "logger.h"
 
 namespace Redis {
@@ -26,10 +25,11 @@ namespace Redis {
     class SimpleString;
     class BulkString;
     class Integer;
+    class Error;
     class Array;
     class Map;
 
-    typedef std::variant<SimpleString, BulkString, Integer, Array, Map> redis_types;
+    typedef std::variant<SimpleString, BulkString, Integer, Error, Array, Map> redis_types;
 
 
     ReplyType determin_type(std::string header) {
@@ -105,6 +105,22 @@ namespace Redis {
         }
     };
 
+    class Error {
+    private:
+        std::string content{};
+
+    public:
+        Error(std::deque<std::string>& msg) {
+            LOG_DEBUG(msg.at(0));
+            content = msg.at(0);
+            msg.pop_front();
+        }
+
+        std::string& get() {
+            return content;
+        }
+    };
+
 
     class Array final {
     private:
@@ -135,6 +151,9 @@ namespace Redis {
                     break;
                 case ReplyType::integer:
                     content.push_front(std::make_shared<redis_types>(Integer(msg)));
+                    break;  
+                case ReplyType::error:
+                    content.push_front(std::make_shared<redis_types>(Error(msg)));
                     break;  
                 case ReplyType::array:
                     content.push_front(std::make_shared<redis_types>(Array(msg)));
@@ -178,6 +197,9 @@ namespace Redis {
                     break;
                 case ReplyType::integer:
                     content.insert(std::make_pair(key, std::make_shared<redis_types>(Integer(msg))));
+                    break;
+                case ReplyType::error:
+                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Error(msg))));
                     break;
                 case ReplyType::array:
                     content.insert(std::make_pair(key, std::make_shared<redis_types>(Array(msg))));

@@ -1,5 +1,14 @@
 * Changelog
 ** [Unreleased]
+** [0.0.7] - 2022-04-04
+*** Added
+- Redlock implementation
+- Transactions
+*** Changed
+- Response Handling
+- Reply Types
+*** Removed
+- Custom Exceptions
 ** [0.0.6] - 2022-03-28
 *** Added
 - Example for Subscribe

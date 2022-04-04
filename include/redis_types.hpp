@@ -35,21 +35,26 @@ namespace Redis {
             return ReplyType::null;
         }
         switch (header[0]) {
-        case '+':
-            return ReplyType::simple_string;
-        case '$':
-            return ReplyType::bulk_string;
-        case ':':
-            return ReplyType::integer;
-        case '%':
-            return ReplyType::map;
-        case '*':
-            return ReplyType::array;
-        case '-':
-            return ReplyType::error;
-        
-        default:
-            return ReplyType::no_type;
+            case '+':
+                return ReplyType::simple_string;
+
+            case '$':
+                return ReplyType::bulk_string;
+
+            case ':':
+                return ReplyType::integer;
+                
+            case '%':
+                return ReplyType::map;
+
+            case '*':
+                return ReplyType::array;
+
+            case '-':
+                return ReplyType::error;
+
+            default:
+                return ReplyType::no_type;
         }
     }
 
@@ -138,25 +143,29 @@ namespace Redis {
             msg.pop_front();
             
             while (array_len > 0) {
-                switch (determin_type(msg.at(0)))
-                {
-                case ReplyType::simple_string:
-                    content.push_front(std::make_shared<redis_types>(SimpleString(msg)));
-                    break;
-                case ReplyType::bulk_string:
-                    content.push_front(std::make_shared<redis_types>(BulkString(msg)));
-                    break;
-                case ReplyType::integer:
-                    content.push_front(std::make_shared<redis_types>(Integer(msg)));
-                    break;  
-                case ReplyType::error:
-                    content.push_front(std::make_shared<redis_types>(Error(msg)));
-                    break;  
-                case ReplyType::array:
-                    content.push_front(std::make_shared<redis_types>(Array(msg)));
-                    break;             
-                default:
-                    break;
+                switch (determin_type(msg.at(0))) {
+                    case ReplyType::simple_string:
+                        content.push_front(std::make_shared<redis_types>(SimpleString(msg)));
+                        break;
+
+                    case ReplyType::bulk_string:
+                        content.push_front(std::make_shared<redis_types>(BulkString(msg)));
+                        break;
+
+                    case ReplyType::integer:
+                        content.push_front(std::make_shared<redis_types>(Integer(msg)));
+                        break;  
+
+                    case ReplyType::error:
+                        content.push_front(std::make_shared<redis_types>(Error(msg)));
+                        break;  
+
+                    case ReplyType::array:
+                        content.push_front(std::make_shared<redis_types>(Array(msg)));
+                        break;   
+
+                    default:
+                        break;
                 }
 
                 array_len--;
@@ -186,26 +195,32 @@ namespace Redis {
                 key = (BulkString(msg)).get();
 
                 switch (determin_type(msg.at(0))) {
-                case ReplyType::simple_string:
-                    content.insert(std::make_pair(key, std::make_shared<redis_types>(SimpleString(msg))));
-                    break;
-                case ReplyType::bulk_string:
-                    content.insert(std::make_pair(key, std::make_shared<redis_types>(BulkString(msg))));
-                    break;
-                case ReplyType::integer:
-                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Integer(msg))));
-                    break;
-                case ReplyType::error:
-                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Error(msg))));
-                    break;
-                case ReplyType::array:
-                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Array(msg))));
-                    break;
-                case ReplyType::map:
-                    content.insert(std::make_pair(key, std::make_shared<redis_types>(Map(msg))));
-                    break;
-                default:
-                    break;
+                    case ReplyType::simple_string:
+                        content.insert(std::make_pair(key, std::make_shared<redis_types>(SimpleString(msg))));
+                        break;
+
+                    case ReplyType::bulk_string:
+                        content.insert(std::make_pair(key, std::make_shared<redis_types>(BulkString(msg))));
+                        break;
+
+                    case ReplyType::integer:
+                        content.insert(std::make_pair(key, std::make_shared<redis_types>(Integer(msg))));
+                        break;
+
+                    case ReplyType::error:
+                        content.insert(std::make_pair(key, std::make_shared<redis_types>(Error(msg))));
+                        break;
+
+                    case ReplyType::array:
+                        content.insert(std::make_pair(key, std::make_shared<redis_types>(Array(msg))));
+                        break;
+
+                    case ReplyType::map:
+                        content.insert(std::make_pair(key, std::make_shared<redis_types>(Map(msg))));
+                        break;
+
+                    default:
+                        break;
                 }
                 map_len--;
             }

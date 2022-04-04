@@ -1,7 +1,6 @@
 #pragma once
 
 #include <deque>
-#include <sstream>
 
 #include "redis_connection.hpp"
 #include "redis_response.hpp"

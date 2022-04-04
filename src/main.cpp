@@ -1,12 +1,8 @@
 #include <string>
-
-#include "redis_execute.hpp"
-#include "redis_types.hpp"
-#include "CLI11.hpp"
-#include "redis_lock.hpp"
-#include "redis_transaction.hpp"
-
 #include <chrono>
+
+#include "CLI11.hpp"
+#include "redis_client.hpp"
 
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};

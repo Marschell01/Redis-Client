@@ -1,8 +1,6 @@
 #pragma once
 
 #include "redis_types.hpp"
-#include <exception>
-
 
 namespace Redis {
 

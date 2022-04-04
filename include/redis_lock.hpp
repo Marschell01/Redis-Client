@@ -1,12 +1,12 @@
 #pragma once
 
 #include <string>
-#include "redis_execute.hpp"
-#include "redis_connection.hpp"
 #include <fstream>
 #include <random>
 
 #include "logger.h"
+#include "redis_execute.hpp"
+#include "redis_connection.hpp"
 
 namespace Redis {
 

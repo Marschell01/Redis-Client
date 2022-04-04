@@ -21,7 +21,6 @@ namespace Redis {
         no_type
     };
 
-
     class SimpleString;
     class BulkString;
     class Integer;
@@ -30,7 +29,6 @@ namespace Redis {
     class Map;
 
     typedef std::variant<SimpleString, BulkString, Integer, Error, Array, Map> redis_types;
-
 
     ReplyType determin_type(std::string header) {
         if (header == "$-1") {
@@ -120,7 +118,6 @@ namespace Redis {
             return content;
         }
     };
-
 
     class Array final {
     private:

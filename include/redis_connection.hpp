@@ -65,7 +65,6 @@ namespace Redis {
         void bufferData(const std::string& data) {
             buffered_data.append(data);
         }
-                    
 
         void sendData() {
             if (socket.is_open()) {

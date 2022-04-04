@@ -29,7 +29,6 @@ namespace Redis {
         return type;
     }
 
-
     void RedisResponse::print_helper(const std::string& key, Redis::redis_types* val, std::string& out) {
         if(val->index() == 0) { //SimpleString
             Redis::SimpleString value = std::get<Redis::SimpleString>(*val);
@@ -72,7 +71,6 @@ namespace Redis {
             idx_counter++;
         }
     }
-
 
     // STRINGS
     template<>

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message RESP3Message {
+    string command = 1;
+    repeated string arguments = 2;
+}
+
+message RESP3Messages {
+    repeated RESP3Message commands = 1;
+}

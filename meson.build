@@ -32,11 +32,18 @@ generated = gen.process('src/redis.proto')
 
 
 inc_dir = include_directories('include')
-src = ['src/main.cpp', 'src/logger.cpp', generated]
+redis_client_src = ['src/main.cpp', 'src/logger.cpp', generated]
+redis_proxy_src = ['src/proxy.cpp', 'src/logger.cpp', generated]
 
 
 executable('redis_client',
-           sources : src,
+           sources : redis_client_src,
+           include_directories : inc_dir,
+           dependencies : [thread_dep, protobuf_dep]
+          )
+
+executable('redis_proxy',
+           sources : redis_proxy_src,
            include_directories : inc_dir,
            dependencies : [thread_dep, protobuf_dep]
           )

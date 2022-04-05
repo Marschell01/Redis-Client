@@ -13,6 +13,10 @@ namespace Redis {
         void print_helper(const std::string& key, Redis::redis_types* val, std::string& out);
 
     public:
+        RedisResponse() {
+            type = ReplyType::no_type;
+        }
+
         RedisResponse(std::deque<std::string> values) : values{values} {
             type = determin_type(values.at(0));
         };

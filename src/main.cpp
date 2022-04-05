@@ -27,5 +27,15 @@ int main(int argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv); 
 
+    Redis::RedisClient client{ip_address, port};
+    client.lock();
+
+    std::string output{client.execute("SET", "Name", "Max Musterman").parse<std::string>()};
+    LOG_INFO(output);
+    std::string igen{client.execute("GET", "Name").parse<std::string>()};
+    LOG_INFO(igen);
+    client.unlock();
+
+    LOG_INFO(output);
     return 0;
 }

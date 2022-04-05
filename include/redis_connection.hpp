@@ -19,10 +19,10 @@ namespace Redis {
     public:
         RedisConnection(std::string ip_address, std::string port) {
             LOG_INFO("Try to connect to server!");
-            
+                
             auto results = resolver.resolve(ip_address, port);
             asio::connect(socket, results);
-            
+                
             LOG_INFO("Connected to server!");
         }
 

@@ -17,10 +17,10 @@ namespace Redis {
         std::string buffered_data{""};
 
     public:
-        RedisConnection(std::string ip_address, std::string port) {
+        RedisConnection(std::string ip_address, int port) {
             LOG_INFO("Try to connect to server!");
                 
-            auto results = resolver.resolve(ip_address, port);
+            auto results = resolver.resolve(ip_address, std::to_string(port));
             asio::connect(socket, results);
                 
             LOG_INFO("Connected to server!");

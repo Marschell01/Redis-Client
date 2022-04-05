@@ -3,10 +3,11 @@
 
 #include "CLI11.hpp"
 #include "redis_client.hpp"
+#include "proxy.hpp"
 
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
-    std::string port{"6379"};
+    int port{6379};
     bool with_login{false};
     
     CLI::App app("A simple redis client");
@@ -27,15 +28,11 @@ int main(int argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv); 
 
-    Redis::RedisClient client{ip_address, port};
-    client.lock();
+    int proxy_port{12345};
+    Redis::RedisClient client{"localhost", proxy_port};
 
-    std::string output{client.execute("SET", "Name", "Max Musterman").parse<std::string>()};
+    std::string output{client.execute("Set", "name", "MaxMuster123").parse<std::string>()};
     LOG_INFO(output);
-    std::string igen{client.execute("GET", "Name").parse<std::string>()};
-    LOG_INFO(igen);
-    client.unlock();
 
-    LOG_INFO(output);
     return 0;
 }

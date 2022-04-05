@@ -29,7 +29,7 @@ namespace Redis {
         }
 
     public:
-        RedisClient(std::string ip_address, std::string port) {
+        RedisClient(std::string ip_address, int port) {
             try {
                 con = new RedisConnection(ip_address, port);
                 LOG_INFO("RedisClient::RedisClient:: Initialized");

@@ -4,50 +4,48 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <regex>
 
 #include "logger.h"
+#include "redis_connection.hpp"
 #include "redis.pb.h"
 
 namespace Redis {
 
     class RedisProxy {
     private:
-        static void serve_client(asio::ip::tcp::socket&& client_socket, asio::ip::tcp::socket&& proxy_socket) {
-            std::string temp{};
-            std::string request{""};
-            std::string response{""};
+        static void serve_client(asio::ip::tcp::socket client_socket, asio::ip::tcp::socket proxy_socket) {
+            RedisConnection client_connection{std::move(client_socket)};
+            RedisConnection server_connection{std::move(proxy_socket)};
             while (true) {
-                response = "";
-                request = "";
                 try {
-                    asio::streambuf request_buf;
-                    asio::read_until(client_socket, request_buf, '\n');
-                    std::istream request_is{&request_buf};
-                    while (std::getline(request_is, temp)) {
-                        if (temp.back() == '\r') {
-                            temp.pop_back();
-                        }
-                        request.append(temp + "\r\n");
-                    }
-                    LOG_INFO("Got request");
-                    LOG_DEBUG(request);
+                    std::string server_request{""};
 
-                    temp = "";
-                    asio::write(proxy_socket, asio::buffer(request, request.size()));
-                    asio::streambuf response_buffer;
-                    asio::read_until(proxy_socket, response_buffer, '\n');
-                    std::istream response_stream{&response_buffer};
-                    while (std::getline(response_stream, temp)) {
-                        if (temp.back() == '\r') {
-                            temp.pop_back();
+                    MessageBundle msgs = client_connection.getProtoData();
+                    for (int i{0}; i < msgs.message_size(); i++) {
+                        for (int y{0}; y < msgs.message(i).argument_size(); y++) {
+                            server_request.append((msgs.message(i).argument(y)) + "\r\n");
                         }
-                        response.append(temp + "\r\n");
                     }
-                    asio::write(client_socket, asio::buffer(response, response.size()));
+                    LOG_INFO("Got from client!");
 
+                    server_connection.sendStringData(server_request);
+                    std::deque<std::string> server_response{server_connection.getStringData()};
+
+                    LOG_INFO("Got from server!");
+                    Message msg;
+                    for (const auto& e : server_response) {
+                        msg.add_argument(e);
+                    }
+                    client_connection.bufferProtoData(msg);
+
+                    client_connection.sendProtoData();
+                    LOG_INFO("Sent to client!");
                 } catch (std::system_error& e) {
-                    LOG_ERROR("Connection ended!");
                     client_socket.close();
+                    proxy_socket.close();
+                    LOG_ERROR(e.what());
+                    LOG_ERROR("Connection ended!");
                     return;
                 }
             }
@@ -72,7 +70,7 @@ namespace Redis {
 
             acceptor.listen();
             LOG_INFO("Proxy launched");
-
+            
             LOG_INFO("Waiting for connection!");
             asio::ip::tcp::socket client_socket{server_ctx};
             acceptor.accept(client_socket);
@@ -81,6 +79,7 @@ namespace Redis {
             std::thread thd{serve_client, std::move(client_socket), std::move(proxy_socket)};
             thd.join();
             proxy_socket.close();
+            
         }
     };
 }

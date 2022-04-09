@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-message RESP3Message {
-    string command = 1;
-    repeated string arguments = 2;
+message Message {
+    repeated string argument = 1;
 }
 
-message RESP3Messages {
-    repeated RESP3Message commands = 1;
+message MessageBundle {
+    repeated Message message = 1;
 }

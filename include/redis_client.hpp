@@ -52,20 +52,25 @@ namespace Redis {
                 return;
             } 
 
-            std::deque<std::string> cmd {
-                "$" + std::to_string(operation.length()) + "\r\n" + 
-                operation + "\r\n",
+            Message request = Message::default_instance();
+            std::string operation_length{"$" + std::to_string(operation.length())};
+            
+            std::deque<std::string> arguments {
                 (
-                    "$" + std::to_string(std::string{args}.length()) + "\r\n" + 
-                    std::string{args} + "\r\n"
+                "$" + std::to_string(std::string{args}.length()) + "\r\n" + 
+                std::string{args}
                 ) ...
             };
 
-            cmd.push_front("*" + std::to_string(cmd.size()) + "\r\n");
+            request.add_argument("*" + std::to_string(arguments.size() + 1));
+            request.add_argument(operation_length);
+            request.add_argument(operation);
 
-            for (const auto& e : cmd) {
-                con->bufferData(e);
+            for (std::string& argument : arguments) {
+                request.add_argument(argument);
             }
+
+            con->bufferProtoData(request);
         }
 
         RedisResponse flush_pending() {
@@ -74,8 +79,8 @@ namespace Redis {
                 return RedisResponse{};
             } 
 
-            con->sendData();
-            return con->getData();
+            con->sendProtoData();
+            return RedisResponse{con->getProtoData().message(0)};
         }
 
         template<typename ...T>
@@ -87,8 +92,8 @@ namespace Redis {
 
             execute_no_flush(operation, args...);
 
-            con->sendData();
-            return RedisResponse{con->getData()};
+            con->sendProtoData();
+            return RedisResponse{con->getProtoData().message(0)};
         }
 
         void lock() {

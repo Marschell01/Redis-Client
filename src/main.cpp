@@ -34,5 +34,8 @@ int main(int argc, char* argv[]) {
     std::string output{client.execute("Set", "name", "MaxMuster123").parse<std::string>()};
     LOG_INFO(output);
 
+    std::string second_output{client.execute("GET", "name").parse<std::string>()};
+    LOG_INFO(second_output);
+
     return 0;
 }

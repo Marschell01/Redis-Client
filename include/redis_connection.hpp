@@ -6,6 +6,7 @@
 #include <deque>
 
 #include "logger.h"
+#include "redis.pb.h"
 
 namespace Redis {
 
@@ -14,7 +15,8 @@ namespace Redis {
         asio::io_context ctx;
         asio::ip::tcp::resolver resolver{ctx};
         asio::ip::tcp::socket socket{ctx}; 
-        std::string buffered_data{""};
+        MessageBundle message_bundle{};
+        std::string message_buffer;
 
     public:
         RedisConnection(std::string ip_address, int port) {
@@ -26,12 +28,17 @@ namespace Redis {
             LOG_INFO("Connected to server!");
         }
 
+        RedisConnection(asio::ip::tcp::socket sock) {
+            socket = std::move(sock);
+            LOG_INFO("Connected via RedisConnection!");
+        }
+
         ~RedisConnection() {
             socket.close();
             LOG_INFO("Connection closed");
         }
 
-        std::deque<std::string> getData() {
+        std::deque<std::string> getStringData() {
             std::deque<std::string> reply{};
             std::string temp{};
 
@@ -63,16 +70,58 @@ namespace Redis {
             return reply;
         }
 
-        void bufferData(const std::string& data) {
-            buffered_data.append(data);
+        MessageBundle getProtoData() {
+            MessageBundle messages = MessageBundle::default_instance();
+            if (socket.is_open()) {
+                LOG_DEBUG("GOT MESSAGE!");
+                u_int64_t response_size;
+                asio::read(socket, asio::buffer(&response_size, sizeof(response_size)));
+
+                asio::streambuf buf;
+                asio::streambuf::mutable_buffers_type bufs = buf.prepare(response_size);
+                buf.commit(asio::read(socket, bufs));
+
+                std::istream is{&buf};
+                messages.ParseFromIstream(&is);
+
+                return messages;
+            }
+            LOG_ERROR("Can not get data, socket is closed!");
+            return messages;
         }
 
-        void sendData() {
+        void bufferStringData(const std::string& request) {
+            message_buffer.append(request);
+        }
+
+        void bufferProtoData(const Message& request) {
+            message_bundle.add_message()->MergeFrom(request);
+        }
+
+        void sendProtoData() {
             if (socket.is_open()) {
                 LOG_DEBUG("Before write!");
-                asio::write(socket, asio::buffer(buffered_data, buffered_data.size()));
-                buffered_data.clear();
-                LOG_DEBUG("After write!");
+
+                u_int64_t request_size{message_bundle.ByteSizeLong()};
+                asio::write(socket, asio::buffer(&request_size, sizeof(request_size)));
+
+                asio::streambuf buf;
+                std::ostream os{&buf};
+                message_bundle.SerializeToOstream(&os);
+                asio::write(socket, buf);
+                message_bundle.clear_message();
+                LOG_DEBUG("Sent message!");
+                return;
+            }
+            LOG_ERROR("Can not sent data, socket is closed!");
+        }
+
+        void sendStringData(std::string request) {
+            if (socket.is_open()) {
+                LOG_DEBUG("Before write!");
+
+                asio::write(socket, asio::buffer(request, request.size()));
+
                 LOG_DEBUG("Sent message!");
                 return;
             }

@@ -67,7 +67,6 @@ namespace Redis {
             content = msg.at(0);
             msg.pop_front();
         }
-
         std::string& get() {
             return content;
         }

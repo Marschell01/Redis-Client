@@ -1,6 +1,7 @@
 #pragma once
 
 #include "redis_types.hpp"
+#include "redis.pb.h"
 
 namespace Redis {
 
@@ -17,9 +18,13 @@ namespace Redis {
             type = ReplyType::no_type;
         }
 
-        RedisResponse(std::deque<std::string> values) : values{values} {
+        RedisResponse(Message response) {
+            for (int i{0}; i < response.argument_size(); i++) {
+                LOG_DEBUG(response.argument(i));
+                values.push_back(response.argument(i));
+            }
             type = determin_type(values.at(0));
-        };
+        }
 
         ReplyType get_type();
 

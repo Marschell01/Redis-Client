@@ -32,7 +32,7 @@ namespace Redis {
         RedisClient(std::string ip_address, int port) {
             try {
                 con = new RedisConnection(ip_address, port);
-                LOG_INFO("RedisClient::RedisClient:: Initialized");
+                LOG_INFO("RedisClient:: Initialized");
             } catch (std::system_error& e) {
                 LOG_ERROR(e.what());
                 con = nullptr;
@@ -42,13 +42,13 @@ namespace Redis {
         ~RedisClient() {
             delete con;
             con = nullptr;
-            LOG_INFO("RedisClient::RedisClient:: Shut down");
+            LOG_INFO("RedisClient:: Shut down");
         }
 
         template<typename ...T>
         void execute_no_flush(std::string operation, T ... args) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("execute_no_flush:: No connection!");
                 return;
             } 
 
@@ -75,7 +75,7 @@ namespace Redis {
 
         RedisResponse flush_pending() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("flush_pending:: No connection!");
                 return RedisResponse{};
             } 
 
@@ -86,7 +86,7 @@ namespace Redis {
         template<typename ...T>
         RedisResponse execute(std::string operation, T && ... args) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("execute:: No connection!");
                 return RedisResponse{};
             } 
 
@@ -98,12 +98,12 @@ namespace Redis {
 
         void lock() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("execute:: No connection!");
                 return;
             } 
 
             generate_key();
-            LOG_INFO("RedisLock::lock:: Try lock on resource: {0}", resource);
+            LOG_INFO("lock:: Try lock on resource: {0}", resource);
             RedisResponse output{execute("SET", resource, rand_key, "NX", "PX", "30000")};
             while (true) {
                 if (output.get_type() == ReplyType::null) {
@@ -113,19 +113,19 @@ namespace Redis {
                     break;
                 }
             }
-            LOG_INFO("RedisLock::lock:: Set lock on resource: {0}", resource);
-            LOG_DEBUG("RedisLock::lock:: Key: {0}", rand_key)
+            LOG_INFO("lock:: Set lock on resource: {0}", resource);
+            LOG_DEBUG("lock:: Key: {0}", rand_key)
         }
 
         void unlock() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("unlock:: No connection!");
                 return;
             } 
 
             RedisResponse output{execute("GET", resource)};
-            LOG_INFO("RedisLock::unlock:: Try to unlock resource: {0}", resource);
-            LOG_DEBUG("RedisLock::lock:: Key: {0}", rand_key)
+            LOG_INFO("unlock:: Try to unlock resource: {0}", resource);
+            LOG_DEBUG("unlock:: Random key is: {0}", rand_key)
 
             switch (output.get_type()) {
             case Redis::ReplyType::error: {
@@ -134,9 +134,9 @@ namespace Redis {
             default:
                 if (output.parse<std::string>() == rand_key) {
                     execute("DEL", resource);
-                    LOG_INFO("RedisLock::unlock:: Released lock");
+                    LOG_INFO("unlock:: Released lock");
                 } else {
-                    LOG_ERROR("RedisLock::unlock:: Lock was not created by this instance");
+                    LOG_ERROR("unlock:: Lock was not created by this instance");
                 }
                 break;
             }
@@ -144,7 +144,7 @@ namespace Redis {
 
         bool begin_transaction(bool using_watch=false) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("begin_transaction:: No connection!");
                 return false;
             } 
 
@@ -153,23 +153,23 @@ namespace Redis {
             }
             std::string resp{execute("MULTI").parse<std::string>()};
             if (resp != "+OK") {
-                LOG_ERROR("Could not start transaction: {0}", resp);
+                LOG_ERROR("begin_transaction:: Could not start transaction: {0}", resp);
                 return false;
             }
 
-            LOG_INFO("Started transaction");
+            LOG_INFO("begin_transaction:: Started transaction");
             holding_transaction = true;
             return true;
         }
         
         void end_transaction() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("end_transaction:: No connection!");
                 return;
             } 
 
             if (!holding_transaction) {
-                LOG_ERROR("No active transaction to end!");
+                LOG_ERROR("end_transaction:: No active transaction to end!");
                 return;
             }
 
@@ -179,12 +179,12 @@ namespace Redis {
 
         void discard_transaction() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("discard_transaction:: No connection!");
                 return;
             } 
 
             if (!holding_transaction) {
-                LOG_ERROR("No active transaction to discard!");
+                LOG_ERROR("discard_transaction:: No active transaction to discard!");
                 return;
             }
 

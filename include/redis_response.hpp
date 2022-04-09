@@ -9,6 +9,7 @@ namespace Redis {
     private: 
         std::deque<std::string> values;
         ReplyType type;
+        int size;
         void map_to_string(Redis::Map map, std::string& out);
         void array_to_string(Redis::Array array, std::string& out);
         void print_helper(const std::string& key, Redis::redis_types* val, std::string& out);
@@ -18,12 +19,12 @@ namespace Redis {
             type = ReplyType::no_type;
         }
 
-        RedisResponse(Message response) {
-            for (int i{0}; i < response.argument_size(); i++) {
-                LOG_DEBUG(response.argument(i));
-                values.push_back(response.argument(i));
-            }
-            type = determin_type(values.at(0));
+        RedisResponse(std::deque<std::string> values) : values{values} {
+            type = determin_type(values.at(0), size);
+        }
+
+        const int& get_size() {
+            return size;
         }
 
         ReplyType get_type();

@@ -35,6 +35,7 @@ namespace Redis {
                     LOG_INFO("serve_client:: Got from server!");
                     Message msg;
                     for (const auto& e : server_response) {
+                        LOG_DEBUG("serve_client:: argument: {0}", e);
                         msg.add_argument(e);
                     }
                     client_connection.bufferProtoData(msg);

@@ -31,11 +31,25 @@ int main(int argc, char* argv[]) {
     int proxy_port{12345};
     Redis::RedisClient client{"localhost", proxy_port};
 
-    std::string output{client.execute("Set", "name", "MaxMuster123").parse<std::string>()};
+    /*
+    std::string output;
+
+    output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
     LOG_INFO(output);
 
-    std::string second_output{client.execute("GET", "name").parse<std::string>()};
-    LOG_INFO(second_output);
+    output = client.execute("GET", "name").parse<std::string>();
+    LOG_INFO(output);
+    */
+    
+    std::string output;
+    client.execute_no_flush("SET", "name", "MaxMuster321");
+    client.execute_no_flush("GET", "name");
+    std::vector<Redis::RedisResponse> responses{client.flush_pending()};
+
+    for (Redis::RedisResponse& response : responses) {
+        LOG_INFO(response.parse<std::string>());
+    }
+    
 
     return 0;
 }

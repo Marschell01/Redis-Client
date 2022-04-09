@@ -73,14 +73,28 @@ namespace Redis {
             con->bufferProtoData(request);
         }
 
-        RedisResponse flush_pending() {
+        std::vector<RedisResponse> flush_pending() {
             if (con == nullptr) {
                 LOG_ERROR("flush_pending:: No connection!");
-                return RedisResponse{};
+                return std::vector<RedisResponse>{};
             } 
 
             con->sendProtoData();
-            return RedisResponse{con->getProtoData().message(0)};
+            Message msg{con->getProtoData().message(0)};
+
+            std::deque<std::string> values;
+            std::vector<RedisResponse> responses;
+            for (int i{0}; i < msg.argument_size(); i++) {
+                LOG_DEBUG(msg.argument(i));
+                values.push_back(msg.argument(i));
+            }
+
+            while (values.size() > 0) {
+                RedisResponse resp{values};
+                responses.push_back(resp);
+                values.erase(values.begin(), values.begin() + resp.get_size());
+            }
+            return responses;
         }
 
         template<typename ...T>
@@ -93,7 +107,13 @@ namespace Redis {
             execute_no_flush(operation, args...);
 
             con->sendProtoData();
-            return RedisResponse{con->getProtoData().message(0)};
+            Message msg{con->getProtoData().message(0)};
+
+            std::deque<std::string> values;
+            for (int i{0}; i < msg.argument_size(); i++) {
+                values.push_back(msg.argument(i));
+            }
+            return RedisResponse{values};
         }
 
         void lock() {

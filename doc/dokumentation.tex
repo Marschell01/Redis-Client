@@ -206,26 +206,36 @@ Die execute\_no\_flush Methode wird in der execute Methode aufgerufen. Nach dem 
 \begin{code}
 \begin{minted}{cpp}
 template<typename ...T>
-void execute_no_flush(std::string operation, T ... args) {
+bool execute_no_flush(std::string operation, T ... args) {
     if (con == nullptr) {
-        LOG_ERROR("No connection!");
-        return;
+        LOG_ERROR("execute_no_flush:: No connection!");
+        return false;
     } 
-    std::deque<std::string> cmd {
-        "$" + std::to_string(operation.length()) +
-        operation,
-        (
-            "$" + std::to_string(std::string{args}.length()) +
+    try {
+        Message request = Message::default_instance();
+        std::string operation_length{"$" + std::to_string(operation.length())};
+    
+        std::deque<std::string> arguments {
+            (
+            "$" + std::to_string(std::string{args}.length()) + "\r\n" + 
             std::string{args}
-        ) ...
-    };
-    cmd.push_front("*" + std::to_string(cmd.size()));
-    RESP3Request request;
-    for (const auto& e : cmd) {
-        request.add_argument(e);
+            ) ...
+        };
+        request.add_argument("*" + std::to_string(arguments.size() + 1));
+        request.add_argument(operation_length);
+        request.add_argument(operation);
+        for (std::string& argument : arguments) {
+            request.add_argument(argument);
+        }
+
+        con->buffer_proto_data(request);
+        return true;
+    } catch(std::system_error& e) {
+        LOG_ERROR("execute_no_flush:: Connection got aborted!");
+        return false;
     }
-    con->bufferData(request);
 }
+
 \end{minted}
 \caption{execute\_no\_flush Methode aus der RedisClient Klasse.}
 \label{resolve_domain}
@@ -240,12 +250,27 @@ Der Rückgabewert der Methode ist ein RedisResponse Objekt, dem die empfangenen 
 template<typename ...T>
 RedisResponse execute(std::string operation, T && ... args) {
     if (con == nullptr) {
-        LOG_ERROR("No connection!");
+        LOG_ERROR("execute:: No connection!");
         return RedisResponse{};
     } 
-    execute_no_flush(operation, args...);
-    con->sendData();
-    return RedisResponse{con->getData()};
+    if (!execute_no_flush(operation, args...)) {
+        return RedisResponse{};
+    }
+    try {
+        con->send_proto_data();
+        Message msg{con->get_proto_data().message(0)};
+        LOG_DEBUG("execute:: bevore deque");
+        std::deque<std::string> values;
+        for (int i{0}; i < msg.argument_size(); i++) {
+            LOG_DEBUG("execute:: value: deque-value: {0}", msg.argument(i));
+            values.push_back(msg.argument(i));
+        }
+        LOG_DEBUG("execute:: after deque");
+        return RedisResponse{values};
+    } catch(std::system_error& e) {
+        LOG_ERROR("execute:: Connection got aborted!");
+    }
+    return RedisResponse{};
 }
 \end{minted}
 \caption{execute Methode aus der RedisClient Klasse.}
@@ -445,6 +470,8 @@ while (true) {
   .3 dokumentation.tex.
   .3 references.bib.
   .3 dokumentation.pdf.
+  .3 images.
+  .4 kalssendiagram.png.
   .2 build.
 }\hfill
 

@@ -42,8 +42,9 @@ if (!client.is_connected()) {
 
 std::string output;
 output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
+LOG_INFO(output);
 output = client.execute("GET", "name").parse<std::string>();
-
+LOG_INFO(output);
 
 /*
  * Pipelining

@@ -7,8 +7,7 @@
 
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
-    int port{6379};
-    bool with_login{false};
+    int destination_port{6379};
     
     CLI::App app("A simple redis client");
     app.add_option("--ip", ip_address, "ip address to connect to")->check(
@@ -20,20 +19,17 @@ int main(int argc, char* argv[]) {
             }
             return std::string();
         }  
-    );
-    app.add_option("-p,--port", port, "port to connect to");
-    app.add_flag("-l,--login", with_login, "Use if a username and password should get requested");
+    )->required();
+    app.add_option("-p,--port", destination_port, "port to connect to")->required();
 
     //LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
 
     CLI11_PARSE(app, argc, argv); 
 
-    int proxy_port{12345};
-    Redis::RedisClient client{"localhost", proxy_port};
+    Redis::RedisClient client{ip_address, destination_port};
 
-    
+    /*
     std::string output;
-
     output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
     LOG_INFO(output);
 
@@ -42,6 +38,7 @@ int main(int argc, char* argv[]) {
 
     output = client.execute("HELLO", "3").parse<std::string>();
     LOG_INFO(output);
+    */
     
     /*
     std::string output;
@@ -53,6 +50,19 @@ int main(int argc, char* argv[]) {
         LOG_INFO(response.parse<std::string>());
     }
     */
+
+    std::string output;
+    client.lock();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds{5000});
+    output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
+    LOG_INFO(output);
+
+    output = client.execute("GET", "name").parse<std::string>();
+    LOG_INFO(output);
+    std::this_thread::sleep_for(std::chrono::milliseconds{2000});
+
+    client.unlock();
 
     return 0;
 }

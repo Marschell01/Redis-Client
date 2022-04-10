@@ -137,6 +137,37 @@ namespace Redis {
             return RedisResponse{};
         }
 
+        void subscribe(std::string sub_object) {
+            execute_no_flush("SUBSCRIBE", sub_object);
+            con->send_proto_with_mode("SUB");
+        }
+
+        std::vector<RedisResponse> fetch_data() {
+            try {
+                con->send_proto_with_mode("ACK");
+                Message msg{con->get_proto_data().message(0)};
+                std::deque<std::string> values;
+                std::vector<RedisResponse> responses;
+                values.clear();
+
+                for (int i{0}; i < msg.argument_size(); i++) {
+                    LOG_DEBUG("fetch_data:: value: deque-value: {0}", msg.argument(i));
+                    values.push_back(msg.argument(i));
+                }
+
+                while (values.size() > 0) {
+                    RedisResponse resp{values};
+                    responses.push_back(resp);
+                    values.erase(values.begin(), values.begin() + resp.get_size());
+                }
+                
+                return responses;
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute:: Connection got aborted!");
+            }
+            return std::vector<RedisResponse>{};
+        }
+
         bool lock(std::string resource) {
             if (con == nullptr) {
                 LOG_ERROR("execute:: No connection!");

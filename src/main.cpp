@@ -8,6 +8,8 @@
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
     int destination_port{6379};
+    bool sub{false};
+    bool pub{false};
     
     CLI::App app("A simple redis client");
     app.add_option("--ip", ip_address, "ip address to connect to")->check(
@@ -21,6 +23,8 @@ int main(int argc, char* argv[]) {
         }  
     )->required();
     app.add_option("-p,--port", destination_port, "port to connect to")->required();
+    app.add_flag("--sub", sub, "set client to subscriber");
+    app.add_flag("--pub", pub, "set client to publisher");
 
     //LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
 
@@ -73,7 +77,7 @@ int main(int argc, char* argv[]) {
 
     client.unlock("resource_1");
     */
-
+    /*
     std::string output;
     try {
         output = client.execute("SET", "name", "MaxMuster321").parse<std::string>();
@@ -95,6 +99,31 @@ int main(int argc, char* argv[]) {
     } catch(std::invalid_argument& e) {
         LOG_ERROR(e.what());
     }
+    */
 
+    std::string output;
+    if (sub) {
+        client.subscribe("subscribe_object");
+        while (true) {
+            LOG_INFO("Subscriber waiting for data");
+            
+            std::vector<Redis::RedisResponse> responses{client.fetch_data()};
+
+            for (Redis::RedisResponse& response : responses) {
+                LOG_INFO(response.parse<std::string>());
+            }
+            
+        }
+    }
+    
+    if (pub) {
+        std::string input{};
+        while (true) {
+            std::cout << "Element: ";
+            std::getline(std::cin, input);
+            output = client.execute("PUBLISH", "subscribe_object", input).parse<std::string>();
+            LOG_INFO(output);
+        }
+    }
     return 0;
 }

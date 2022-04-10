@@ -17,20 +17,40 @@ namespace Redis {
         static void serve_client(asio::ip::tcp::socket client_socket, asio::ip::tcp::socket proxy_socket) {
             RedisConnection client_connection{std::move(client_socket), "client"};
             RedisConnection server_connection{std::move(proxy_socket), "server"};
+            bool sub_mode_on{false};
+            bool first_launch{true};
+            std::deque<std::string> server_response;
+            MessageBundle msgs;
+            std::string server_request{""};
             while (true) {
                 try {
-                    std::string server_request{""};
+                    server_response.clear();
+                    server_response.clear();
+                    msgs = client_connection.get_proto_data();
 
-                    MessageBundle msgs = client_connection.get_proto_data();
-                    for (int i{0}; i < msgs.message_size(); i++) {
-                        for (int y{0}; y < msgs.message(i).argument_size(); y++) {
-                            server_request.append((msgs.message(i).argument(y)) + "\r\n");
+                    if (msgs.mode() == "SUB") {
+                        LOG_INFO("serve_client:: Set sub mode on");
+                        sub_mode_on = true;
+                    } else if (sub_mode_on && msgs.mode() != "ACK") {
+                        LOG_ERROR("serve_client:: Subscribed client is not responding properly!");
+                        return;
+                    }
+
+                    if (!sub_mode_on || first_launch) {
+                        for (int i{0}; i < msgs.message_size(); i++) {
+                            for (int y{0}; y < msgs.message(i).argument_size(); y++) {
+                                server_request.append((msgs.message(i).argument(y)) + "\r\n");
+                            }
                         }
                     }
+
                     LOG_INFO("serve_client:: Got from client!");
-                    std::deque<std::string> server_response;
+
                     try {
-                        server_connection.send_string_data(server_request);
+                        if (!sub_mode_on || first_launch) {
+                            server_connection.send_string_data(server_request);
+                            LOG_INFO("SENT DATA");
+                        }
                         server_response = std::deque<std::string>{server_connection.get_string_data()};
                     } catch(std::system_error& e) {
                         LOG_ERROR("serve_client:: Connection to server ended!");
@@ -47,6 +67,8 @@ namespace Redis {
 
                     client_connection.send_proto_data();
                     LOG_INFO("serve_client:: Sent to client!");
+                    
+                    first_launch = false;
                 } catch (std::system_error& e) {
                     client_socket.close();
                     LOG_ERROR("serve_client:: Connection to client ended!");

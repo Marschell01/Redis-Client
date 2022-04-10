@@ -106,6 +106,12 @@ namespace Redis {
             LOG_DEBUG("send_proto_data::{0}: Sent message!", connection_name);
         }
 
+        void send_proto_with_mode(std::string mode) {
+            message_bundle.set_mode(mode);
+            LOG_DEBUG("send_proto_data:: {0}: Mode set to {1}", connection_name, mode);
+            send_proto_data();
+        }
+
         void send_string_data(std::string request) {
             LOG_DEBUG("send_string_data::{0}: Before write!", connection_name);
             asio::write(socket, asio::buffer(request, request.size()));

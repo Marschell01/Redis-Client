@@ -22,7 +22,7 @@ namespace Redis {
             std::mt19937 generator(random_device());
             std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
 
-            for (std::size_t i = 0; i < 40; ++i) {
+            for (std::size_t i{0}; i < 40; ++i) {
                 rand_key += CHARACTERS[distribution(generator)];
             }
         }

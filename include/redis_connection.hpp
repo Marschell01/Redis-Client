@@ -20,7 +20,7 @@ namespace Redis {
         std::string connection_name;
 
     public:
-        RedisConnection(std::string ip_address, int port, std::string con_name="") {
+        RedisConnection(const std::string& ip_address, const int& port, const std::string& con_name="") {
             LOG_INFO("RedisConnection::{0}: Try to connect to server!", con_name);
             
             auto results = resolver.resolve(ip_address, std::to_string(port));
@@ -44,7 +44,6 @@ namespace Redis {
         std::deque<std::string> get_string_data() {
             std::deque<std::string> reply{};
             std::string temp{};
-
             asio::streambuf buf;
 
             LOG_DEBUG("get_string_data::{0}: Before read", connection_name);
@@ -106,13 +105,13 @@ namespace Redis {
             LOG_DEBUG("send_proto_data::{0}: Sent message!", connection_name);
         }
 
-        void send_proto_with_mode(std::string mode) {
+        void send_proto_with_mode(const std::string& mode) {
             message_bundle.set_mode(mode);
             LOG_DEBUG("send_proto_data:: {0}: Mode set to {1}", connection_name, mode);
             send_proto_data();
         }
 
-        void send_string_data(std::string request) {
+        void send_string_data(const std::string& request) {
             LOG_DEBUG("send_string_data::{0}: Before write!", connection_name);
             asio::write(socket, asio::buffer(request, request.size()));
             LOG_DEBUG("send_string_data::{0}: Sent message!", connection_name);

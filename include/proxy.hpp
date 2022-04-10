@@ -25,7 +25,7 @@ namespace Redis {
             while (true) {
                 try {
                     server_response.clear();
-                    server_response.clear();
+                    server_request.clear();
                     msgs = client_connection.get_proto_data();
 
                     if (msgs.mode() == "SUB") {

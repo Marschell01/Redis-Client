@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+message Message {
+    repeated string argument = 1;
+}
+
+message MessageBundle {
+    repeated Message message = 1;
+}

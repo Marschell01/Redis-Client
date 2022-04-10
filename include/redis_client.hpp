@@ -10,7 +10,6 @@ namespace Redis {
     private:
         RedisConnection* con{nullptr};
         int lock_time;
-        std::string resource;
         std::string rand_key;
         bool holding_transaction{false};
 
@@ -29,10 +28,10 @@ namespace Redis {
         }
 
     public:
-        RedisClient(std::string ip_address, std::string port) {
+        RedisClient(std::string ip_address, int port) {
             try {
                 con = new RedisConnection(ip_address, port);
-                LOG_INFO("RedisClient::RedisClient:: Initialized");
+                LOG_INFO("RedisClient:: Initialized");
             } catch (std::system_error& e) {
                 LOG_ERROR(e.what());
                 con = nullptr;
@@ -42,85 +41,141 @@ namespace Redis {
         ~RedisClient() {
             delete con;
             con = nullptr;
-            LOG_INFO("RedisClient::RedisClient:: Shut down");
+            LOG_INFO("RedisClient:: Shut down");
+        }
+
+        bool is_connected() {
+            return con != nullptr;
         }
 
         template<typename ...T>
-        void execute_no_flush(std::string operation, T ... args) {
+        bool execute_no_flush(std::string operation, T ... args) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
-                return;
+                LOG_ERROR("execute_no_flush:: No connection!");
+                return false;
             } 
 
-            std::deque<std::string> cmd {
-                "$" + std::to_string(operation.length()) + "\r\n" + 
-                operation + "\r\n",
-                (
+            try {
+                Message request = Message::default_instance();
+                std::string operation_length{"$" + std::to_string(operation.length())};
+                
+                std::deque<std::string> arguments {
+                    (
                     "$" + std::to_string(std::string{args}.length()) + "\r\n" + 
-                    std::string{args} + "\r\n"
-                ) ...
-            };
+                    std::string{args}
+                    ) ...
+                };
 
-            cmd.push_front("*" + std::to_string(cmd.size()) + "\r\n");
+                request.add_argument("*" + std::to_string(arguments.size() + 1));
+                request.add_argument(operation_length);
+                request.add_argument(operation);
 
-            for (const auto& e : cmd) {
-                con->bufferData(e);
+                for (std::string& argument : arguments) {
+                    request.add_argument(argument);
+                }
+
+                con->bufferProtoData(request);
+                return true;
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute_no_flush:: Connection got aborted!");
+                return false;
             }
         }
 
-        RedisResponse flush_pending() {
+        std::vector<RedisResponse> flush_pending() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
-                return RedisResponse{};
+                LOG_ERROR("flush_pending:: No connection!");
+                return std::vector<RedisResponse>{};
             } 
+            try {
+                con->sendProtoData();
+                Message msg{con->getProtoData().message(0)};
 
-            con->sendData();
-            return con->getData();
+                std::deque<std::string> values;
+                std::vector<RedisResponse> responses;
+                for (int i{0}; i < msg.argument_size(); i++) {
+                    LOG_DEBUG("flush_pending:: {0}", msg.argument(i));
+                    values.push_back(msg.argument(i));
+                }
+
+                while (values.size() > 0) {
+                    RedisResponse resp{values};
+                    responses.push_back(resp);
+                    values.erase(values.begin(), values.begin() + resp.get_size());
+                }
+                return responses;
+            } catch(std::system_error& e) {
+                LOG_ERROR("flush_pending:: Connection got aborted!");
+            }
+            
         }
 
         template<typename ...T>
         RedisResponse execute(std::string operation, T && ... args) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("execute:: No connection!");
                 return RedisResponse{};
             } 
-
-            execute_no_flush(operation, args...);
-
-            con->sendData();
-            return RedisResponse{con->getData()};
+            if (!execute_no_flush(operation, args...)) {
+                return RedisResponse{};
+            }
+            
+            try {
+                con->sendProtoData();
+                Message msg{con->getProtoData().message(0)};
+                LOG_DEBUG("execute:: bevore deque");
+                std::deque<std::string> values;
+                for (int i{0}; i < msg.argument_size(); i++) {
+                    LOG_DEBUG("execute:: value: deque-value: {0}", msg.argument(i));
+                    values.push_back(msg.argument(i));
+                }
+                LOG_DEBUG("execute:: after deque");
+                return RedisResponse{values};
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute:: Connection got aborted!");
+            }
+            return RedisResponse{};
         }
 
-        void lock() {
+        bool lock(std::string resource) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
-                return;
-            } 
+                LOG_ERROR("execute:: No connection!");
+                return false;
+            }
 
             generate_key();
-            LOG_INFO("RedisLock::lock:: Try lock on resource: {0}", resource);
+            LOG_INFO("lock:: Try lock on resource: {0}", resource);
             RedisResponse output{execute("SET", resource, rand_key, "NX", "PX", "30000")};
             while (true) {
                 if (output.get_type() == ReplyType::null) {
                     std::this_thread::sleep_for(std::chrono::milliseconds{1000});
                     output = execute("SET", resource, rand_key, "NX", "PX", "30000");
+                }
+                else if (output.get_type() == ReplyType::no_type) {
+                    LOG_ERROR("lock:: response size was 0!");
+                    return false;
                 } else {
                     break;
                 }
             }
-            LOG_INFO("RedisLock::lock:: Set lock on resource: {0}", resource);
-            LOG_DEBUG("RedisLock::lock:: Key: {0}", rand_key)
+            LOG_INFO("lock:: Set lock on resource: {0}", resource);
+            LOG_DEBUG("lock:: Key: {0}", rand_key);
+            return true;
         }
 
-        void unlock() {
+        bool unlock(std::string resource) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
-                return;
+                LOG_ERROR("unlock:: No connection!");
+                return false;
             } 
 
             RedisResponse output{execute("GET", resource)};
-            LOG_INFO("RedisLock::unlock:: Try to unlock resource: {0}", resource);
-            LOG_DEBUG("RedisLock::lock:: Key: {0}", rand_key)
+            if (output.get_type() == ReplyType::no_type) {
+                LOG_ERROR("lock:: response size was 0!");
+                return false;
+            }
+            LOG_INFO("unlock:: Try to unlock resource: {0}", resource);
+            LOG_DEBUG("unlock:: Random key is: {0}", rand_key)
 
             switch (output.get_type()) {
             case Redis::ReplyType::error: {
@@ -128,63 +183,84 @@ namespace Redis {
             }
             default:
                 if (output.parse<std::string>() == rand_key) {
-                    execute("DEL", resource);
-                    LOG_INFO("RedisLock::unlock:: Released lock");
+                    RedisResponse resp{execute("DEL", resource)};
+                    if (resp.get_type() == ReplyType::no_type) {
+                        LOG_ERROR("lock:: response size was 0!");
+                        return false;
+                    }
+                    LOG_INFO("unlock:: Released lock");
+                    return true;
+                    
                 } else {
-                    LOG_ERROR("RedisLock::unlock:: Lock was not created by this instance");
+                    LOG_ERROR("unlock:: Lock was not created by this instance");
                 }
                 break;
             }
+            return false;
         }
 
         bool begin_transaction(bool using_watch=false) {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
+                LOG_ERROR("begin_transaction:: No connection!");
                 return false;
             } 
 
             if (using_watch) {
-                execute("WATCH").parse<std::string>();
+                RedisResponse resp{execute("WATCH")};
+                if (resp.get_type() == ReplyType::no_type) {
+                    LOG_ERROR("lock:: response size was 0!");
+                    return false;
+                }
             }
             std::string resp{execute("MULTI").parse<std::string>()};
             if (resp != "+OK") {
-                LOG_ERROR("Could not start transaction: {0}", resp);
+                LOG_ERROR("begin_transaction:: Could not start transaction: {0}", resp);
                 return false;
             }
 
-            LOG_INFO("Started transaction");
+            LOG_INFO("begin_transaction:: Started transaction");
             holding_transaction = true;
             return true;
         }
         
-        void end_transaction() {
+        bool end_transaction() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
-                return;
+                LOG_ERROR("end_transaction:: No connection!");
+                return false;
             } 
 
             if (!holding_transaction) {
-                LOG_ERROR("No active transaction to end!");
-                return;
+                LOG_ERROR("end_transaction:: No active transaction to end!");
+                return false;
             }
 
-            std::string resp{execute("EXEC").parse<std::string>()};
-            LOG_INFO(resp);
+            RedisResponse resp{execute("EXEC")};
+            if (resp.get_type() == ReplyType::no_type) {
+                LOG_ERROR("lock:: response size was 0!");
+                return false;
+            }
+            LOG_INFO(resp.parse<std::string>());
+            return true;
         }
 
-        void discard_transaction() {
+        bool discard_transaction() {
             if (con == nullptr) {
-                LOG_ERROR("No connection!");
-                return;
+                LOG_ERROR("discard_transaction:: No connection!");
+                return false;
             } 
 
             if (!holding_transaction) {
-                LOG_ERROR("No active transaction to discard!");
-                return;
+                LOG_ERROR("discard_transaction:: No active transaction to discard!");
+                return false;
             }
 
-            std::string resp{execute("DISCARD").parse<std::string>()};
-            LOG_INFO(resp);
+            RedisResponse resp{execute("DISCARD")};
+            if (resp.get_type() == ReplyType::no_type) {
+                LOG_ERROR("lock:: response size was 0!");
+                return false;
+            }
+            LOG_INFO(resp.parse<std::string>());
+            return true;
         }
     };
 }

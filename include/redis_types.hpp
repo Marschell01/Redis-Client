@@ -29,30 +29,39 @@ namespace Redis {
 
     typedef std::variant<SimpleString, BulkString, Integer, Error, Array, Map> redis_types;
 
-    ReplyType determin_type(std::string header) {
+    ReplyType determin_type(std::string header, int& size) {
         if (header == "$-1") {
             return ReplyType::null;
         }
         switch (header[0]) {
             case '+':
+                size = 1;
                 return ReplyType::simple_string;
 
             case '$':
+                size = 2;
                 return ReplyType::bulk_string;
 
             case ':':
+                size = 1;
                 return ReplyType::integer;
                 
             case '%':
+                header.erase(0, 1);
+                size = {std::stoi(header) * 2};
                 return ReplyType::map;
 
             case '*':
+                header.erase(0, 1);
+                size = {std::stoi(header)};
                 return ReplyType::array;
 
             case '-':
+                size = 1;
                 return ReplyType::error;
 
             default:
+                size = 0;
                 return ReplyType::no_type;
         }
     }
@@ -67,7 +76,6 @@ namespace Redis {
             content = msg.at(0);
             msg.pop_front();
         }
-
         std::string& get() {
             return content;
         }
@@ -140,9 +148,10 @@ namespace Redis {
             }
 
             msg.pop_front();
+            int size;
             
             while (array_len > 0) {
-                switch (determin_type(msg.at(0))) {
+                switch (determin_type(msg.at(0), size)) {
                     case ReplyType::simple_string:
                         content.push_front(std::make_shared<redis_types>(SimpleString(msg)));
                         break;
@@ -182,18 +191,19 @@ namespace Redis {
 
     public:
         Map(std::deque<std::string>& msg) {
-            LOG_DEBUG(msg.at(0));
+            LOG_DEBUG("Map:: Message Header: {0}", msg.at(0));
             std::string header{msg.at(0)};
             header.erase(0, 1);
-            LOG_DEBUG(header);
+            LOG_DEBUG("Map:: Computed size: {0}", header);
             int map_len{std::stoi(header)};
             msg.pop_front();
-            
+            int size;
+
             std::string key{};
             while (map_len > 0) {
                 key = (BulkString(msg)).get();
 
-                switch (determin_type(msg.at(0))) {
+                switch (determin_type(msg.at(0), size)) {
                     case ReplyType::simple_string:
                         content.insert(std::make_pair(key, std::make_shared<redis_types>(SimpleString(msg))));
                         break;

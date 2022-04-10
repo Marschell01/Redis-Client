@@ -27,16 +27,23 @@ gen = generator(protoc, \
    arguments : ['--proto_path=@CURRENT_SOURCE_DIR@/src', '--cpp_out=@BUILD_DIR@', '@PLAINNAME@'])
 
 # # change proto file accordingly
-#generated = gen.process('src/dummy.proto')
+generated = gen.process('src/redis.proto')
 # #end protobuf
 
 
 inc_dir = include_directories('include')
-src = ['src/main.cpp', 'src/logger.cpp']
+redis_client_src = ['src/main.cpp', 'src/logger.cpp', generated]
+redis_proxy_src = ['src/proxy.cpp', 'src/logger.cpp', generated]
 
 
 executable('redis_client',
-           sources : src,
+           sources : redis_client_src,
+           include_directories : inc_dir,
+           dependencies : [thread_dep, protobuf_dep]
+          )
+
+executable('redis_proxy',
+           sources : redis_proxy_src,
            include_directories : inc_dir,
            dependencies : [thread_dep, protobuf_dep]
           )

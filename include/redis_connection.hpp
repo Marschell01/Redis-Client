@@ -45,51 +45,42 @@ namespace Redis {
             std::deque<std::string> reply{};
             std::string temp{};
 
-            if (socket.is_open()) {
-                asio::streambuf buf;
+            asio::streambuf buf;
 
-                LOG_DEBUG("getStringData::{0}: Before read", connection_name);
+            LOG_DEBUG("getStringData::{0}: Before read", connection_name);
 
-                asio::read_until(socket, buf, '\n');
+            asio::read_until(socket, buf, '\n');
 
-                LOG_DEBUG("getStringData::{0}: After read!", connection_name);
-                LOG_DEBUG("getStringData::{0}: Creating stream!", connection_name);
+            LOG_DEBUG("getStringData::{0}: After read!", connection_name);
+            LOG_DEBUG("getStringData::{0}: Creating stream!", connection_name);
 
-                std::istream is{&buf};
+            std::istream is{&buf};
 
-                LOG_DEBUG("getStringData::{0}: Created stream!", connection_name);
-                LOG_DEBUG("getStringData::{0}: Processing received message!", connection_name);
-                while (std::getline(is, temp)) {
-                    if (temp.back() == '\r') {
-                        temp.pop_back();
-                    }
-                    reply.push_back(temp);
+            LOG_DEBUG("getStringData::{0}: Created stream!", connection_name);
+            LOG_DEBUG("getStringData::{0}: Processing received message!", connection_name);
+            while (std::getline(is, temp)) {
+                if (temp.back() == '\r') {
+                    temp.pop_back();
                 }
-
-                LOG_DEBUG("getStringData::{0}: Processed received message!", connection_name);
-                return reply;
+                reply.push_back(temp);
             }
-            LOG_ERROR("getStringData::{0}: Can not get data, socket is closed!", connection_name);
+            LOG_DEBUG("getStringData::{0}: Processed received message!", connection_name);
             return reply;
         }
 
         MessageBundle getProtoData() {
             MessageBundle messages = MessageBundle::default_instance();
-            if (socket.is_open()) {
-                LOG_DEBUG("getProtoData::{0}: GOT MESSAGE!", connection_name);
-                u_int64_t response_size;
-                asio::read(socket, asio::buffer(&response_size, sizeof(response_size)));
 
-                asio::streambuf buf;
-                asio::streambuf::mutable_buffers_type bufs = buf.prepare(response_size);
-                buf.commit(asio::read(socket, bufs));
+            LOG_DEBUG("getProtoData::{0}: GOT MESSAGE!", connection_name);
+            u_int64_t response_size;
+            asio::read(socket, asio::buffer(&response_size, sizeof(response_size)));
+            asio::streambuf buf;
+            asio::streambuf::mutable_buffers_type bufs = buf.prepare(response_size);
+            buf.commit(asio::read(socket, bufs));
 
-                std::istream is{&buf};
-                messages.ParseFromIstream(&is);
+            std::istream is{&buf};
+            messages.ParseFromIstream(&is);
 
-                return messages;
-            }
-            LOG_ERROR("getProtoData::{0}: Can not get data, socket is closed!", connection_name);
             return messages;
         }
 
@@ -102,33 +93,23 @@ namespace Redis {
         }
 
         void sendProtoData() {
-            if (socket.is_open()) {
-                LOG_DEBUG("sendProtoData::{0}: Before write!", connection_name);
+            LOG_DEBUG("sendProtoData::{0}: Before write!", connection_name);
 
-                u_int64_t request_size{message_bundle.ByteSizeLong()};
-                asio::write(socket, asio::buffer(&request_size, sizeof(request_size)));
+            u_int64_t request_size{message_bundle.ByteSizeLong()};
+            asio::write(socket, asio::buffer(&request_size, sizeof(request_size)));
 
-                asio::streambuf buf;
-                std::ostream os{&buf};
-                message_bundle.SerializeToOstream(&os);
-                asio::write(socket, buf);
-                message_bundle.clear_message();
-                LOG_DEBUG("sendProtoData::{0}: Sent message!", connection_name);
-                return;
-            }
-            LOG_ERROR("sendProtoData::{0}: Can not sent data, socket is closed!", connection_name);
+            asio::streambuf buf;
+            std::ostream os{&buf};
+            message_bundle.SerializeToOstream(&os);
+            asio::write(socket, buf);
+            message_bundle.clear_message();
+            LOG_DEBUG("sendProtoData::{0}: Sent message!", connection_name);
         }
 
         void sendStringData(std::string request) {
-            if (socket.is_open()) {
-                LOG_DEBUG("sendStringData::{0}: Before write!", connection_name);
-
-                asio::write(socket, asio::buffer(request, request.size()));
-
-                LOG_DEBUG("sendStringData::{0}: Sent message!", connection_name);
-                return;
-            }
-            LOG_ERROR("sendStringData::{0}: Can not sent data, socket is closed!", connection_name);
+            LOG_DEBUG("sendStringData::{0}: Before write!", connection_name);
+            asio::write(socket, asio::buffer(request, request.size()));
+            LOG_DEBUG("sendStringData::{0}: Sent message!", connection_name);
         }
     };
 }

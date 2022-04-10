@@ -10,7 +10,6 @@ namespace Redis {
     private:
         RedisConnection* con{nullptr};
         int lock_time;
-        std::string resource;
         std::string rand_key;
         bool holding_transaction{false};
 
@@ -45,32 +44,42 @@ namespace Redis {
             LOG_INFO("RedisClient:: Shut down");
         }
 
+        bool is_connected() {
+            return con != nullptr;
+        }
+
         template<typename ...T>
-        void execute_no_flush(std::string operation, T ... args) {
+        bool execute_no_flush(std::string operation, T ... args) {
             if (con == nullptr) {
                 LOG_ERROR("execute_no_flush:: No connection!");
-                return;
+                return false;
             } 
 
-            Message request = Message::default_instance();
-            std::string operation_length{"$" + std::to_string(operation.length())};
-            
-            std::deque<std::string> arguments {
-                (
-                "$" + std::to_string(std::string{args}.length()) + "\r\n" + 
-                std::string{args}
-                ) ...
-            };
+            try {
+                Message request = Message::default_instance();
+                std::string operation_length{"$" + std::to_string(operation.length())};
+                
+                std::deque<std::string> arguments {
+                    (
+                    "$" + std::to_string(std::string{args}.length()) + "\r\n" + 
+                    std::string{args}
+                    ) ...
+                };
 
-            request.add_argument("*" + std::to_string(arguments.size() + 1));
-            request.add_argument(operation_length);
-            request.add_argument(operation);
+                request.add_argument("*" + std::to_string(arguments.size() + 1));
+                request.add_argument(operation_length);
+                request.add_argument(operation);
 
-            for (std::string& argument : arguments) {
-                request.add_argument(argument);
+                for (std::string& argument : arguments) {
+                    request.add_argument(argument);
+                }
+
+                con->bufferProtoData(request);
+                return true;
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute_no_flush:: Connection got aborted!");
+                return false;
             }
-
-            con->bufferProtoData(request);
         }
 
         std::vector<RedisResponse> flush_pending() {
@@ -78,23 +87,27 @@ namespace Redis {
                 LOG_ERROR("flush_pending:: No connection!");
                 return std::vector<RedisResponse>{};
             } 
+            try {
+                con->sendProtoData();
+                Message msg{con->getProtoData().message(0)};
 
-            con->sendProtoData();
-            Message msg{con->getProtoData().message(0)};
+                std::deque<std::string> values;
+                std::vector<RedisResponse> responses;
+                for (int i{0}; i < msg.argument_size(); i++) {
+                    LOG_DEBUG("flush_pending:: {0}", msg.argument(i));
+                    values.push_back(msg.argument(i));
+                }
 
-            std::deque<std::string> values;
-            std::vector<RedisResponse> responses;
-            for (int i{0}; i < msg.argument_size(); i++) {
-                LOG_DEBUG("flush_pending:: {0}", msg.argument(i));
-                values.push_back(msg.argument(i));
+                while (values.size() > 0) {
+                    RedisResponse resp{values};
+                    responses.push_back(resp);
+                    values.erase(values.begin(), values.begin() + resp.get_size());
+                }
+                return responses;
+            } catch(std::system_error& e) {
+                LOG_ERROR("flush_pending:: Connection got aborted!");
             }
-
-            while (values.size() > 0) {
-                RedisResponse resp{values};
-                responses.push_back(resp);
-                values.erase(values.begin(), values.begin() + resp.get_size());
-            }
-            return responses;
+            
         }
 
         template<typename ...T>
@@ -103,25 +116,32 @@ namespace Redis {
                 LOG_ERROR("execute:: No connection!");
                 return RedisResponse{};
             } 
-
-            execute_no_flush(operation, args...);
-
-            con->sendProtoData();
-            Message msg{con->getProtoData().message(0)};
-            LOG_DEBUG("execute:: bevore deque");
-            std::deque<std::string> values;
-            for (int i{0}; i < msg.argument_size(); i++) {
-                values.push_back(msg.argument(i));
+            if (!execute_no_flush(operation, args...)) {
+                return RedisResponse{};
             }
-            LOG_DEBUG("execute:: after deque");
-            return RedisResponse{values};
+            
+            try {
+                con->sendProtoData();
+                Message msg{con->getProtoData().message(0)};
+                LOG_DEBUG("execute:: bevore deque");
+                std::deque<std::string> values;
+                for (int i{0}; i < msg.argument_size(); i++) {
+                    LOG_DEBUG("execute:: value: deque-value: {0}", msg.argument(i));
+                    values.push_back(msg.argument(i));
+                }
+                LOG_DEBUG("execute:: after deque");
+                return RedisResponse{values};
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute:: Connection got aborted!");
+            }
+            return RedisResponse{};
         }
 
-        void lock() {
+        bool lock(std::string resource) {
             if (con == nullptr) {
                 LOG_ERROR("execute:: No connection!");
-                return;
-            } 
+                return false;
+            }
 
             generate_key();
             LOG_INFO("lock:: Try lock on resource: {0}", resource);
@@ -130,21 +150,30 @@ namespace Redis {
                 if (output.get_type() == ReplyType::null) {
                     std::this_thread::sleep_for(std::chrono::milliseconds{1000});
                     output = execute("SET", resource, rand_key, "NX", "PX", "30000");
+                }
+                else if (output.get_type() == ReplyType::no_type) {
+                    LOG_ERROR("lock:: response size was 0!");
+                    return false;
                 } else {
                     break;
                 }
             }
             LOG_INFO("lock:: Set lock on resource: {0}", resource);
-            LOG_DEBUG("lock:: Key: {0}", rand_key)
+            LOG_DEBUG("lock:: Key: {0}", rand_key);
+            return true;
         }
 
-        void unlock() {
+        bool unlock(std::string resource) {
             if (con == nullptr) {
                 LOG_ERROR("unlock:: No connection!");
-                return;
+                return false;
             } 
 
             RedisResponse output{execute("GET", resource)};
+            if (output.get_type() == ReplyType::no_type) {
+                LOG_ERROR("lock:: response size was 0!");
+                return false;
+            }
             LOG_INFO("unlock:: Try to unlock resource: {0}", resource);
             LOG_DEBUG("unlock:: Random key is: {0}", rand_key)
 
@@ -154,13 +183,20 @@ namespace Redis {
             }
             default:
                 if (output.parse<std::string>() == rand_key) {
-                    execute("DEL", resource);
+                    RedisResponse resp{execute("DEL", resource)};
+                    if (resp.get_type() == ReplyType::no_type) {
+                        LOG_ERROR("lock:: response size was 0!");
+                        return false;
+                    }
                     LOG_INFO("unlock:: Released lock");
+                    return true;
+                    
                 } else {
                     LOG_ERROR("unlock:: Lock was not created by this instance");
                 }
                 break;
             }
+            return false;
         }
 
         bool begin_transaction(bool using_watch=false) {
@@ -170,7 +206,11 @@ namespace Redis {
             } 
 
             if (using_watch) {
-                execute("WATCH").parse<std::string>();
+                RedisResponse resp{execute("WATCH")};
+                if (resp.get_type() == ReplyType::no_type) {
+                    LOG_ERROR("lock:: response size was 0!");
+                    return false;
+                }
             }
             std::string resp{execute("MULTI").parse<std::string>()};
             if (resp != "+OK") {
@@ -183,34 +223,44 @@ namespace Redis {
             return true;
         }
         
-        void end_transaction() {
+        bool end_transaction() {
             if (con == nullptr) {
                 LOG_ERROR("end_transaction:: No connection!");
-                return;
+                return false;
             } 
 
             if (!holding_transaction) {
                 LOG_ERROR("end_transaction:: No active transaction to end!");
-                return;
+                return false;
             }
 
-            std::string resp{execute("EXEC").parse<std::string>()};
-            LOG_INFO(resp);
+            RedisResponse resp{execute("EXEC")};
+            if (resp.get_type() == ReplyType::no_type) {
+                LOG_ERROR("lock:: response size was 0!");
+                return false;
+            }
+            LOG_INFO(resp.parse<std::string>());
+            return true;
         }
 
-        void discard_transaction() {
+        bool discard_transaction() {
             if (con == nullptr) {
                 LOG_ERROR("discard_transaction:: No connection!");
-                return;
+                return false;
             } 
 
             if (!holding_transaction) {
                 LOG_ERROR("discard_transaction:: No active transaction to discard!");
-                return;
+                return false;
             }
 
-            std::string resp{execute("DISCARD").parse<std::string>()};
-            LOG_INFO(resp);
+            RedisResponse resp{execute("DISCARD")};
+            if (resp.get_type() == ReplyType::no_type) {
+                LOG_ERROR("lock:: response size was 0!");
+                return false;
+            }
+            LOG_INFO(resp.parse<std::string>());
+            return true;
         }
     };
 }

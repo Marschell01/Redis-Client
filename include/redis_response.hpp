@@ -9,7 +9,7 @@ namespace Redis {
     private: 
         std::deque<std::string> values;
         ReplyType type;
-        int size;
+        int size{0};
         void map_to_string(Redis::Map map, std::string& out);
         void array_to_string(Redis::Array array, std::string& out);
         void print_helper(const std::string& key, Redis::redis_types* val, std::string& out);

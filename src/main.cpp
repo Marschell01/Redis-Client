@@ -27,6 +27,10 @@ int main(int argc, char* argv[]) {
     CLI11_PARSE(app, argc, argv); 
 
     Redis::RedisClient client{ip_address, destination_port};
+    if (!client.is_connected()) {
+        LOG_ERROR("Proxy unavailable!");
+        return 1;
+    }
 
     /*
     std::string output;
@@ -52,17 +56,21 @@ int main(int argc, char* argv[]) {
     */
 
     std::string output;
-    client.lock();
+    client.lock("resource_1");
 
-    std::this_thread::sleep_for(std::chrono::milliseconds{5000});
-    output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
-    LOG_INFO(output);
+    try {
+        std::this_thread::sleep_for(std::chrono::milliseconds{5000});
+        output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
+        LOG_INFO(output);
 
-    output = client.execute("GET", "name").parse<std::string>();
-    LOG_INFO(output);
-    std::this_thread::sleep_for(std::chrono::milliseconds{2000});
+        output = client.execute("GET", "name").parse<std::string>();
+        LOG_INFO(output);
+        std::this_thread::sleep_for(std::chrono::milliseconds{2000});
+    } catch(std::invalid_argument& e) {
+        LOG_ERROR(e.what());
+    }
 
-    client.unlock();
+    client.unlock("resource_1");
 
     return 0;
 }

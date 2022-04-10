@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     int proxy_port{12345};
     Redis::RedisClient client{"localhost", proxy_port};
 
-    /*
+    
     std::string output;
 
     output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
@@ -39,8 +39,11 @@ int main(int argc, char* argv[]) {
 
     output = client.execute("GET", "name").parse<std::string>();
     LOG_INFO(output);
-    */
+
+    output = client.execute("HELLO", "3").parse<std::string>();
+    LOG_INFO(output);
     
+    /*
     std::string output;
     client.execute_no_flush("SET", "name", "MaxMuster321");
     client.execute_no_flush("GET", "name");
@@ -49,7 +52,7 @@ int main(int argc, char* argv[]) {
     for (Redis::RedisResponse& response : responses) {
         LOG_INFO(response.parse<std::string>());
     }
-    
+    */
 
     return 0;
 }

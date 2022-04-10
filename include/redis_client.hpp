@@ -85,7 +85,7 @@ namespace Redis {
             std::deque<std::string> values;
             std::vector<RedisResponse> responses;
             for (int i{0}; i < msg.argument_size(); i++) {
-                LOG_DEBUG(msg.argument(i));
+                LOG_DEBUG("flush_pending:: {0}", msg.argument(i));
                 values.push_back(msg.argument(i));
             }
 
@@ -108,11 +108,12 @@ namespace Redis {
 
             con->sendProtoData();
             Message msg{con->getProtoData().message(0)};
-
+            LOG_DEBUG("execute:: bevore deque");
             std::deque<std::string> values;
             for (int i{0}; i < msg.argument_size(); i++) {
                 values.push_back(msg.argument(i));
             }
+            LOG_DEBUG("execute:: after deque");
             return RedisResponse{values};
         }
 

@@ -191,10 +191,10 @@ namespace Redis {
 
     public:
         Map(std::deque<std::string>& msg) {
-            LOG_DEBUG(msg.at(0));
+            LOG_DEBUG("Map:: Message Header: {0}", msg.at(0));
             std::string header{msg.at(0)};
             header.erase(0, 1);
-            LOG_DEBUG(header);
+            LOG_DEBUG("Map:: Computed size: {0}", header);
             int map_len{std::stoi(header)};
             msg.pop_front();
             int size;

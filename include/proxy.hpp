@@ -1,4 +1,18 @@
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: proxy.hpp
+desc: This module implements a simple proxy to connect the RedisClient with a Redis Server
+date: 2022-04-08
+class: 5b
+catnr: 3
+*/
+
 #pragma once
+
+#include "logger.h"
+#include "redis_connection.hpp"
+#include "redis.pb.h"
 
 #include <asio.hpp>
 #include <iostream>
@@ -6,14 +20,12 @@
 #include <thread>
 #include <regex>
 
-#include "logger.h"
-#include "redis_connection.hpp"
-#include "redis.pb.h"
-
 namespace Redis {
 
     class RedisProxy {
     private:
+
+        // Implements support for Subscribe functionallity
         static void serve_client(asio::ip::tcp::socket client_socket, asio::ip::tcp::socket proxy_socket) {
             RedisConnection client_connection{std::move(client_socket), "client"};
             RedisConnection server_connection{std::move(proxy_socket), "server"};
@@ -78,6 +90,7 @@ namespace Redis {
         }
     public:
 
+        //Inizialises Server and launches client connection
         RedisProxy(int host_port, std::string dest_ip, int dest_port ) {
             asio::io_context client_ctx;
             asio::ip::tcp::resolver resolver{client_ctx};

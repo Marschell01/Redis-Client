@@ -1,15 +1,25 @@
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: redis_types.hpp
+desc: This module implements the reply types used by the redis client
+date: 2022-04-05
+class: 5b
+catnr: 3
+*/
+
 #pragma once
+
+#include "logger.h"
 
 #include <string>
 #include <deque>
 #include <variant>
 #include <map>
 
-#include "logger.h"
-
 namespace Redis {
 
-    enum ReplyType {
+    enum ReplyType { // Types used in this application
         simple_string,
         bulk_string,
         integer,
@@ -20,6 +30,7 @@ namespace Redis {
         no_type
     };
 
+    //Predefined classes for usage in variant
     class SimpleString;
     class BulkString;
     class Integer;
@@ -29,6 +40,7 @@ namespace Redis {
 
     typedef std::variant<SimpleString, BulkString, Integer, Error, Array, Map> redis_types;
 
+    //determin_type function, callable throughout the program
     ReplyType determin_type(std::string header, int& size) {
         if (header == "$-1") {
             return ReplyType::null;
@@ -66,6 +78,7 @@ namespace Redis {
         }
     }
 
+    //Parsing/Storing of simple strings
     class SimpleString {
     private:
         std::string content{};
@@ -81,6 +94,7 @@ namespace Redis {
         }
     };
 
+    //Parsing/Storing of bulk strings
     class BulkString  {
     private:
         std::string content{};
@@ -98,6 +112,7 @@ namespace Redis {
         }
     };
 
+    //Parsing/Storing of integers
     class Integer  {
     private:
         int content{};
@@ -115,6 +130,7 @@ namespace Redis {
         }
     };
 
+    //Parsing/Storing of errors
     class Error {
     private:
         std::string content{};
@@ -131,7 +147,8 @@ namespace Redis {
         }
     };
 
-    class Array final {
+    //Parsing/Storing of arrays
+    class Array {
     private:
         std::deque<std::shared_ptr<redis_types>> content{};
 
@@ -185,6 +202,7 @@ namespace Redis {
         }
     };
 
+    //Parsing/Storing of maps
     class Map  {
     private:
         std::map<std::string, std::shared_ptr<redis_types>> content{};

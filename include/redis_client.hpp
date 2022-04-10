@@ -1,9 +1,19 @@
-#pragma once
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: redis_client.hpp
+desc: This module implements the functionallities of the Redis Client.
+date: 2022-04-05
+class: 5b
+catnr: 3
+*/
 
-#include <random>
+#pragma once
 
 #include "redis_response.hpp"
 #include "redis_connection.hpp"
+
+#include <random>
 
 namespace Redis {
     class RedisClient {
@@ -13,6 +23,8 @@ namespace Redis {
         std::string rand_key;
         bool holding_transaction{false};
 
+
+        //Inspired by https://stackoverflow.com/questions/440133/how-do-i-create-a-random-alpha-numeric-string-in-c
         void generate_key() {
             rand_key = "";
 

@@ -1,15 +1,26 @@
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: redis_connection.hpp
+desc: This module implements the connection functions used by the client and the proxy
+date: 2022-04-09
+class: 5b
+catnr: 3
+*/
+
 #pragma once
+
+#include "logger.h"
+#include "redis.pb.h"
 
 #include <asio.hpp>
 #include <iostream>
 #include <string>
 #include <deque>
 
-#include "logger.h"
-#include "redis.pb.h"
-
 namespace Redis {
 
+    //Imlements proto and string functions,that are called either for transmitting protobuf messages or for transmitting strings
     class RedisConnection {
     private:
         asio::io_context ctx;

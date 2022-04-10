@@ -1,8 +1,18 @@
-#include <string>
-#include <chrono>
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: proxy.cpp
+desc: This file implements the proxy launch and interface
+date: 2022-04-09
+class: 5b
+catnr: 3
+*/
 
 #include "CLI11.hpp"
 #include "proxy.hpp"
+
+#include <string>
+#include <chrono>
 
 int main(int argc, char* argv[]) {
     int destination_port{6379};

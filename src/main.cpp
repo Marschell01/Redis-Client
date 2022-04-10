@@ -1,3 +1,13 @@
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: main.cpp
+desc: This file implements the redis clients launch and interface
+date: 2022-04-09
+class: 5b
+catnr: 3
+*/
+
 #include <string>
 #include <chrono>
 

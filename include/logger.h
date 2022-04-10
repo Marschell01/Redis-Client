@@ -1,3 +1,13 @@
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: logger.h
+desc: This module implements logging
+date: 2022-04-05
+class: 5b
+catnr: 3
+*/
+
 #pragma once
 
 #include "spdlog/spdlog.h"

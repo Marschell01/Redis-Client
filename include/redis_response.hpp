@@ -1,3 +1,13 @@
+/*
+author: Dinhof Marcel
+matnr: i17044
+file: redis_response.hpp
+desc: This module implements the response parsing for the client
+date: 2022-04-07
+class: 5b
+catnr: 3
+*/
+
 #pragma once
 
 #include "redis_types.hpp"
@@ -38,6 +48,7 @@ namespace Redis {
         return type;
     }
 
+    //Helper function to print an array or map
     void RedisResponse::print_helper(const std::string& key, Redis::redis_types* val, std::string& out) {
         LOG_DEBUG("print_helper:: Variant index: {0}", val->index());
         if(val->index() == 0) { //SimpleString
@@ -74,6 +85,7 @@ namespace Redis {
         }
     }
 
+    //printing of a map
     void RedisResponse::map_to_string(Redis::Map map, std::string& out) {
         LOG_DEBUG("map_to_string:: bevore loop");
         for (auto& [key, val] : map.get()) {
@@ -81,6 +93,7 @@ namespace Redis {
         }
     }
 
+    //printing of an array
     void RedisResponse::array_to_string(Redis::Array array, std::string& out) {
         int idx_counter{0};
         for (auto& elem : array.get()) {
@@ -89,7 +102,7 @@ namespace Redis {
         }
     }
 
-    // STRINGS
+    // parsing of strings
     template<>
     std::string RedisResponse::parse<std::string>() {
         switch (type) {
@@ -133,7 +146,7 @@ namespace Redis {
         }
     }
 
-    //INTEGERS
+    //parsing of integers
     template<>
     int RedisResponse::parse<int>() {
         if (type == ReplyType::integer) {
@@ -146,7 +159,7 @@ namespace Redis {
         throw std::invalid_argument("Value can not be converted into an integer!");
     }
 
-    //REDIS::ARRAYS
+    //parsing of arrays
     template<>
     Redis::Array RedisResponse::parse<Redis::Array>() {
         if (type == ReplyType::array) {
@@ -156,7 +169,7 @@ namespace Redis {
         throw std::invalid_argument("Value can not be converted into an array!");
     }
 
-    //REDIS::MAPS
+    //parsing of maps
     template<>
     Redis::Map RedisResponse::parse<Redis::Map>() {
         if (type == ReplyType::map) {

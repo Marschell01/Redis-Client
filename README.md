@@ -2,7 +2,7 @@
 ## Ein einfacher Redis Client in C++
 
 Dieser Client ermöglicht eine flexieble Kommunikation mit einem Redis Server.
-Aufgrund seiner Klassenstruktur kann er beleibig erweitern und angepasst werden.
+Aufgrund seiner Klassenstruktur kann er beliebig erweitern und angepasst werden.
 
 
 ## Installation

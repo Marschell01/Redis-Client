@@ -41,37 +41,37 @@ namespace Redis {
             LOG_INFO("~RedisConnection::{0}: Connection closed", connection_name);
         }
 
-        std::deque<std::string> getStringData() {
+        std::deque<std::string> get_string_data() {
             std::deque<std::string> reply{};
             std::string temp{};
 
             asio::streambuf buf;
 
-            LOG_DEBUG("getStringData::{0}: Before read", connection_name);
+            LOG_DEBUG("get_string_data::{0}: Before read", connection_name);
 
             asio::read_until(socket, buf, '\n');
 
-            LOG_DEBUG("getStringData::{0}: After read!", connection_name);
-            LOG_DEBUG("getStringData::{0}: Creating stream!", connection_name);
+            LOG_DEBUG("get_string_data::{0}: After read!", connection_name);
+            LOG_DEBUG("get_string_data::{0}: Creating stream!", connection_name);
 
             std::istream is{&buf};
 
-            LOG_DEBUG("getStringData::{0}: Created stream!", connection_name);
-            LOG_DEBUG("getStringData::{0}: Processing received message!", connection_name);
+            LOG_DEBUG("get_string_data::{0}: Created stream!", connection_name);
+            LOG_DEBUG("get_string_data::{0}: Processing received message!", connection_name);
             while (std::getline(is, temp)) {
                 if (temp.back() == '\r') {
                     temp.pop_back();
                 }
                 reply.push_back(temp);
             }
-            LOG_DEBUG("getStringData::{0}: Processed received message!", connection_name);
+            LOG_DEBUG("get_string_data::{0}: Processed received message!", connection_name);
             return reply;
         }
 
-        MessageBundle getProtoData() {
+        MessageBundle get_proto_data() {
             MessageBundle messages = MessageBundle::default_instance();
 
-            LOG_DEBUG("getProtoData::{0}: GOT MESSAGE!", connection_name);
+            LOG_DEBUG("get_proto_data::{0}: GOT MESSAGE!", connection_name);
             u_int64_t response_size;
             asio::read(socket, asio::buffer(&response_size, sizeof(response_size)));
             asio::streambuf buf;
@@ -84,16 +84,16 @@ namespace Redis {
             return messages;
         }
 
-        void bufferStringData(const std::string& request) {
+        void buffer_string_data(const std::string& request) {
             message_buffer.append(request);
         }
 
-        void bufferProtoData(const Message& request) {
+        void buffer_proto_data(const Message& request) {
             message_bundle.add_message()->MergeFrom(request);
         }
 
-        void sendProtoData() {
-            LOG_DEBUG("sendProtoData::{0}: Before write!", connection_name);
+        void send_proto_data() {
+            LOG_DEBUG("send_proto_data::{0}: Before write!", connection_name);
 
             u_int64_t request_size{message_bundle.ByteSizeLong()};
             asio::write(socket, asio::buffer(&request_size, sizeof(request_size)));
@@ -103,13 +103,13 @@ namespace Redis {
             message_bundle.SerializeToOstream(&os);
             asio::write(socket, buf);
             message_bundle.clear_message();
-            LOG_DEBUG("sendProtoData::{0}: Sent message!", connection_name);
+            LOG_DEBUG("send_proto_data::{0}: Sent message!", connection_name);
         }
 
-        void sendStringData(std::string request) {
-            LOG_DEBUG("sendStringData::{0}: Before write!", connection_name);
+        void send_string_data(std::string request) {
+            LOG_DEBUG("send_string_data::{0}: Before write!", connection_name);
             asio::write(socket, asio::buffer(request, request.size()));
-            LOG_DEBUG("sendStringData::{0}: Sent message!", connection_name);
+            LOG_DEBUG("send_string_data::{0}: Sent message!", connection_name);
         }
     };
 }

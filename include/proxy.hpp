@@ -21,7 +21,7 @@ namespace Redis {
                 try {
                     std::string server_request{""};
 
-                    MessageBundle msgs = client_connection.getProtoData();
+                    MessageBundle msgs = client_connection.get_proto_data();
                     for (int i{0}; i < msgs.message_size(); i++) {
                         for (int y{0}; y < msgs.message(i).argument_size(); y++) {
                             server_request.append((msgs.message(i).argument(y)) + "\r\n");
@@ -30,8 +30,8 @@ namespace Redis {
                     LOG_INFO("serve_client:: Got from client!");
                     std::deque<std::string> server_response;
                     try {
-                        server_connection.sendStringData(server_request);
-                        server_response = std::deque<std::string>{server_connection.getStringData()};
+                        server_connection.send_string_data(server_request);
+                        server_response = std::deque<std::string>{server_connection.get_string_data()};
                     } catch(std::system_error& e) {
                         LOG_ERROR("serve_client:: Connection to server ended!");
                         return;
@@ -43,9 +43,9 @@ namespace Redis {
                         LOG_DEBUG("serve_client:: argument: {0}", e);
                         msg.add_argument(e);
                     }
-                    client_connection.bufferProtoData(msg);
+                    client_connection.buffer_proto_data(msg);
 
-                    client_connection.sendProtoData();
+                    client_connection.send_proto_data();
                     LOG_INFO("serve_client:: Sent to client!");
                 } catch (std::system_error& e) {
                     client_socket.close();

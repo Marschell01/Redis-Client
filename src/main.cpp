@@ -55,6 +55,7 @@ int main(int argc, char* argv[]) {
     }
     */
 
+    /*
     std::string output;
     client.lock("resource_1");
 
@@ -71,6 +72,29 @@ int main(int argc, char* argv[]) {
     }
 
     client.unlock("resource_1");
+    */
+
+    std::string output;
+    try {
+        output = client.execute("SET", "name", "MaxMuster321").parse<std::string>();
+        LOG_INFO(output);
+
+        client.begin_transaction();
+
+        output = client.execute("SET", "name", "MaxMuster123").parse<std::string>();
+        LOG_INFO(output);
+
+        output = client.execute("GET", "name").parse<std::string>();
+        LOG_INFO(output);
+    
+        //client.end_transaction();
+        client.discard_transaction();
+
+        output = client.execute("GET", "name").parse<std::string>();
+        LOG_INFO(output);
+    } catch(std::invalid_argument& e) {
+        LOG_ERROR(e.what());
+    }
 
     return 0;
 }

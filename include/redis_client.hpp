@@ -74,7 +74,7 @@ namespace Redis {
                     request.add_argument(argument);
                 }
 
-                con->bufferProtoData(request);
+                con->buffer_proto_data(request);
                 return true;
             } catch(std::system_error& e) {
                 LOG_ERROR("execute_no_flush:: Connection got aborted!");
@@ -88,8 +88,8 @@ namespace Redis {
                 return std::vector<RedisResponse>{};
             } 
             try {
-                con->sendProtoData();
-                Message msg{con->getProtoData().message(0)};
+                con->send_proto_data();
+                Message msg{con->get_proto_data().message(0)};
 
                 std::deque<std::string> values;
                 std::vector<RedisResponse> responses;
@@ -121,8 +121,8 @@ namespace Redis {
             }
             
             try {
-                con->sendProtoData();
-                Message msg{con->getProtoData().message(0)};
+                con->send_proto_data();
+                Message msg{con->get_proto_data().message(0)};
                 LOG_DEBUG("execute:: bevore deque");
                 std::deque<std::string> values;
                 for (int i{0}; i < msg.argument_size(); i++) {

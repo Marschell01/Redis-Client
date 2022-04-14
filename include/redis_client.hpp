@@ -60,6 +60,56 @@ namespace Redis {
             return con != nullptr;
         }
 
+        bool execute_no_flush(std::vector<std::string> arguments) {
+            if (con == nullptr) {
+                LOG_ERROR("execute_no_flush:: No connection!");
+                return false;
+            } 
+
+            try {
+                Message request = Message::default_instance();
+                request.add_argument("*" + std::to_string(arguments.size()));
+                
+                for (std::string& argument : arguments) {
+                    request.add_argument(
+                        "$" + std::to_string(argument.length()) + "\r\n" + argument
+                    );
+                }
+
+                con->buffer_proto_data(request);
+                return true;
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute_no_flush:: Connection got aborted!");
+                return false;
+            }
+        }
+
+        RedisResponse execute(std::vector<std::string> arguments) {
+            if (con == nullptr) {
+                LOG_ERROR("execute_no_flush:: No connection!");
+                return RedisResponse{};
+            } 
+            if (!execute_no_flush(arguments)) {
+                return RedisResponse{};
+            }
+            
+            try {
+                con->send_proto_data();
+                Message msg{con->get_proto_data().message(0)};
+                LOG_DEBUG("execute:: bevore deque");
+                std::deque<std::string> values;
+                for (int i{0}; i < msg.argument_size(); i++) {
+                    LOG_DEBUG("execute:: value: deque-value: {0}", msg.argument(i));
+                    values.push_back(msg.argument(i));
+                }
+                LOG_DEBUG("execute:: after deque");
+                return RedisResponse{values};
+            } catch(std::system_error& e) {
+                LOG_ERROR("execute:: Connection got aborted!");
+            }
+            return RedisResponse{};
+        }
+
         template<typename ...T>
         bool execute_no_flush(std::string operation, T ... args) {
             if (con == nullptr) {

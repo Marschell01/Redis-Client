@@ -13,7 +13,6 @@ catnr: 3
 
 #include "CLI11.hpp"
 #include "redis_client.hpp"
-#include "proxy.hpp"
 
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
@@ -29,11 +28,40 @@ int main(int argc, char* argv[]) {
             }
             return std::string();
         }  
-    )->required();
-    app.add_option("-p,--port", destination_port, "port to connect to")->required();
+    );
+    app.add_option("-p,--port", destination_port, "port to connect to");
 
     //LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
 
     CLI11_PARSE(app, argc, argv); 
+
+
+
+    //Interactive Mode
+    std::string input;
+    std::string output;
+    Redis::RedisClient client{ip_address, destination_port};
+    while (true) {
+        std::cout << ip_address << ":" << destination_port << "> ";
+        std::getline(std::cin, input);
+        std::string temp = "";
+        std::vector<std::string> arguments;
+        for(size_t i={0}; i < input.length(); i++){
+            
+            if(input[i]==' '){
+                arguments.push_back(temp);
+                temp = "";
+            }
+            else{
+                temp.push_back(input[i]);
+            }
+            
+        }
+        arguments.push_back(temp);
+
+        output = client.execute(arguments).parse<std::string>();
+        std::cout << "server> " << output << std::endl;
+    }
+
     return 0;
 }

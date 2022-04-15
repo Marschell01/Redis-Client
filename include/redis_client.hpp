@@ -22,6 +22,7 @@ namespace Redis {
         int lock_time;
         std::string rand_key;
         bool holding_transaction{false};
+        bool connected{false};
 
 
         //Inspired by https://stackoverflow.com/questions/440133/how-do-i-create-a-random-alpha-numeric-string-in-c
@@ -44,6 +45,7 @@ namespace Redis {
             try {
                 con = new RedisConnection(ip_address, port);
                 LOG_INFO("RedisClient:: Initialized");
+                connected = true;
             } catch (std::system_error& e) {
                 LOG_ERROR(e.what());
                 con = nullptr;
@@ -57,11 +59,11 @@ namespace Redis {
         }
 
         bool is_connected() {
-            return con != nullptr;
+            return connected;
         }
 
         bool execute_no_flush(std::vector<std::string> arguments) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("execute_no_flush:: No connection!");
                 return false;
             } 
@@ -80,12 +82,13 @@ namespace Redis {
                 return true;
             } catch(std::system_error& e) {
                 LOG_ERROR("execute_no_flush:: Connection got aborted!");
+                connected = false;
                 return false;
             }
         }
 
         RedisResponse execute(std::vector<std::string> arguments) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("execute_no_flush:: No connection!");
                 return RedisResponse{};
             } 
@@ -105,6 +108,7 @@ namespace Redis {
                 LOG_DEBUG("execute:: after deque");
                 return RedisResponse{values};
             } catch(std::system_error& e) {
+                connected = false;
                 LOG_ERROR("execute:: Connection got aborted!");
             }
             return RedisResponse{};
@@ -112,7 +116,7 @@ namespace Redis {
 
         template<typename ...T>
         bool execute_no_flush(std::string operation, T ... args) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("execute_no_flush:: No connection!");
                 return false;
             } 
@@ -140,12 +144,13 @@ namespace Redis {
                 return true;
             } catch(std::system_error& e) {
                 LOG_ERROR("execute_no_flush:: Connection got aborted!");
+                connected = false;
                 return false;
             }
         }
 
         std::vector<RedisResponse> flush_pending() {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("flush_pending:: No connection!");
                 return std::vector<RedisResponse>{};
             } 
@@ -168,13 +173,14 @@ namespace Redis {
                 return responses;
             } catch(std::system_error& e) {
                 LOG_ERROR("flush_pending:: Connection got aborted!");
+                connected = false;
             }
             
         }
 
         template<typename ...T>
         RedisResponse execute(std::string operation, T && ... args) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("execute:: No connection!");
                 return RedisResponse{};
             } 
@@ -195,6 +201,7 @@ namespace Redis {
                 return RedisResponse{values};
             } catch(std::system_error& e) {
                 LOG_ERROR("execute:: Connection got aborted!");
+                connected = false;
             }
             return RedisResponse{};
         }
@@ -226,12 +233,13 @@ namespace Redis {
                 return responses;
             } catch(std::system_error& e) {
                 LOG_ERROR("execute:: Connection got aborted!");
+                connected = false;
             }
             return std::vector<RedisResponse>{};
         }
 
         bool lock(std::string resource) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("execute:: No connection!");
                 return false;
             }
@@ -257,7 +265,7 @@ namespace Redis {
         }
 
         bool unlock(std::string resource) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("unlock:: No connection!");
                 return false;
             } 
@@ -293,7 +301,7 @@ namespace Redis {
         }
 
         bool begin_transaction(bool using_watch=false) {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("begin_transaction:: No connection!");
                 return false;
             } 
@@ -317,7 +325,7 @@ namespace Redis {
         }
         
         bool end_transaction() {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("end_transaction:: No connection!");
                 return false;
             } 
@@ -337,7 +345,7 @@ namespace Redis {
         }
 
         bool discard_transaction() {
-            if (con == nullptr) {
+            if (!connected) {
                 LOG_ERROR("discard_transaction:: No connection!");
                 return false;
             } 

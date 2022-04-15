@@ -140,6 +140,11 @@ namespace Redis {
                 return output;
             }
 
+            case ReplyType::null: {
+                LOG_DEBUG("parse<std::string> null");
+                return "";
+            }
+
             default: {
                 throw std::invalid_argument("Value can not be converted into an string!");
             }

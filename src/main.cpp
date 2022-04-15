@@ -49,11 +49,11 @@ std::string interaction(const std::string& ip, const int& port, Redis::RedisClie
 }
 
 int main(int argc, char* argv[]) {
-    std::string ip_address{"localhost"};
+    std::string ip_address{""};
     std::string lock_resource{""};
     std::string subscribe_to{""};
     std::string publish_to{""};
-    int destination_port{6379};
+    int destination_port{0};
     int wait_time{0};
     int re_run_count{1};
     bool interactive_mode_on{false};
@@ -87,6 +87,10 @@ int main(int argc, char* argv[]) {
     CLI11_PARSE(app, argc, argv); 
 
     Redis::RedisClient client{ip_address, destination_port};
+    if (!client.is_connected()) {
+        LOG_ERROR("A Proxy must be available to connect to!");
+        return 1;
+    }
     std::string input;
     std::string output;
 

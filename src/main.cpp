@@ -14,9 +14,49 @@ catnr: 3
 #include "CLI11.hpp"
 #include "redis_client.hpp"
 
+std::string interaction(const std::string& ip, const int& port, Redis::RedisClient& client) {
+    std::string temp = "";
+    std::vector<std::string> arguments;
+    std::string input;
+    std::string output;
+    while (client.is_connected()) {
+        temp.clear();
+        arguments.clear();
+        std::cout << ip << ":" << port << "> ";
+        std::getline(std::cin, input);
+
+        if (input.at(0) == '-') {
+            if (input == "-end" || input == "-abort") {
+                break;
+            } else {
+                LOG_ERROR("Invalid operation");
+            }
+        }
+
+        for(size_t i={0}; i < input.length(); i++){
+            if(input[i]==' '){
+                arguments.push_back(temp);
+                temp = "";
+            } else{
+                temp.push_back(input[i]);
+            }  
+        }
+        arguments.push_back(temp);
+        output = client.execute(arguments).parse<std::string>();
+        std::cout << "server> " << output << std::endl;
+    }
+    return input;
+}
+
 int main(int argc, char* argv[]) {
     std::string ip_address{"localhost"};
     int destination_port{6379};
+    bool interactive_mode_on{false};
+    std::vector<std::string> commands;
+    int wait_time{0};
+    int re_run_count{1};
+    bool transaction_on{false};
+
     
     CLI::App app("A simple redis client");
     app.add_option("--ip", ip_address, "ip address to connect to")->check(
@@ -30,38 +70,49 @@ int main(int argc, char* argv[]) {
         }  
     );
     app.add_option("-p,--port", destination_port, "port to connect to");
+    app.add_flag("-i,--interactive", interactive_mode_on, "enable of disable interactive mode");
+    app.add_option("-c,--command", commands, "Command to execute");
+    app.add_option("-r,--redo", re_run_count, "Excpects amout of itterations for command");
+    app.add_option("--wait", wait_time, "Specify milliseconds between command call");
+    app.add_flag("-t,--transaction", transaction_on ,"Starts a transaction");
 
     //LOG_SET_LOGLEVEL(LOG_LEVEL_DEBUG);
 
     CLI11_PARSE(app, argc, argv); 
 
-
-
-    //Interactive Mode
+    Redis::RedisClient client{ip_address, destination_port};
     std::string input;
     std::string output;
-    Redis::RedisClient client{ip_address, destination_port};
-    while (true) {
-        std::cout << ip_address << ":" << destination_port << "> ";
-        std::getline(std::cin, input);
-        std::string temp = "";
-        std::vector<std::string> arguments;
-        for(size_t i={0}; i < input.length(); i++){
-            
-            if(input[i]==' '){
-                arguments.push_back(temp);
-                temp = "";
-            }
-            else{
-                temp.push_back(input[i]);
-            }
-            
-        }
-        arguments.push_back(temp);
 
-        output = client.execute(arguments).parse<std::string>();
-        std::cout << "server> " << output << std::endl;
+    if (!interactive_mode_on) {
+
+        if (transaction_on) {
+            client.begin_transaction();
+            LOG_INFO("Type -end to end the transaction, -abort to abort the transaction");
+            output = interaction(ip_address, destination_port, client);
+
+            if (output == "-end") {
+                client.end_transaction();
+                return 0;
+            } else if (output == "-abort") {
+                client.discard_transaction();
+                return 0;
+            } 
+        }
+
+        if (commands.size() > 0) {
+            for (int i{0}; i < re_run_count; i++) {
+                output = client.execute(commands).parse<std::string>();
+                LOG_INFO(output);
+                std::this_thread::sleep_for(std::chrono::milliseconds{wait_time});
+            }
+        }
+        return 0;
     }
+
+    //Interactive Mode
+    LOG_INFO("Type -end to exit");
+    interaction(ip_address, destination_port, client);
 
     return 0;
 }
